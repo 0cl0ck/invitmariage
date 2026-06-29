@@ -1,3 +1,5 @@
+import MapLink from "./MapLink.jsx";
+
 export default function ProgramTimeline({ program }) {
   return (
     <section className="section section--program">
@@ -15,6 +17,7 @@ export default function ProgramTimeline({ program }) {
               <span className="timeline__body">
                 <span className="timeline__name">{step.name}</span>
                 <span className="timeline__place">{step.place}</span>
+                <MapLink place={step.place} />
               </span>
             </li>
           ))}

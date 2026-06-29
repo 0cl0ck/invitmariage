@@ -487,6 +487,33 @@ button {
   color: var(--color-text-muted);
   font-size: var(--fs-small);
 }
+.map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: max-content;
+  max-width: 100%;
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--color-gold);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  padding-bottom: 1px;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.map-link:hover {
+  color: #d8b768;
+  border-bottom-color: var(--color-line);
+  text-decoration: none;
+}
+.map-link:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+.map-link__icon {
+  flex: none;
+}
 
 /* ----------------------------- Info -------------------------------------- */
 .section--info {
