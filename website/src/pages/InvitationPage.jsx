@@ -55,27 +55,39 @@ export default function InvitationPage({ variant }) {
     };
   }, [variant, continued]);
 
-  const scrollToId = (id) => {
+  const smoothScrollTo = (id) => {
     const target = document.getElementById(id);
     if (!target) return;
-    if (window.__lenis) window.__lenis.scrollTo(target, { offset: 0 });
-    else target.scrollIntoView({ behavior: "smooth" });
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    const lenis = window.__lenis;
+    // Desktop: drive Lenis (matches the site's smooth scroll). Touch devices:
+    // Lenis doesn't manage native touch scroll, so use the browser's own smooth
+    // scroll (reliable, and Lenis simply tracks it).
+    if (lenis && typeof lenis.scrollTo === "function" && !coarse) {
+      lenis.scrollTo(target, { duration: 1.2 });
+    } else {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
-  // Reveal the content (if still gated), then scroll to a section.
+  // Reveal the content (if still gated), then auto-scroll to a section.
   const revealThenScroll = (id) => {
     if (continued) {
-      scrollToId(id);
+      smoothScrollTo(id);
       return;
     }
     setContinued(true);
-    // Wait for the content to mount + lay out before refreshing/scrolling.
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        ScrollTrigger.refresh();
-        scrollToId(id);
-      }),
-    );
+    // Let the revealed content lay out AND the reveal effect's own refresh settle
+    // first — otherwise that refresh cancels the scroll mid-flight.
+    setTimeout(() => {
+      // The document just got taller; recompute Lenis's scroll limit, else
+      // scrollTo clamps to the old (shorter) max and goes nowhere.
+      if (window.__lenis && typeof window.__lenis.resize === "function") {
+        window.__lenis.resize();
+      }
+      ScrollTrigger.refresh();
+      smoothScrollTo(id);
+    }, 130);
   };
 
   const handleContinue = () => revealThenScroll("apres-hero");
