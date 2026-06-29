@@ -478,7 +478,9 @@ button {
   height: 9px;
   border-radius: 50%;
   background: var(--color-gold);
-  align-self: center;
+  /* Sit on the first line (next to the time), not centered over the whole row —
+     otherwise it drops to the middle when the place wraps to two lines. */
+  align-self: baseline;
 }
 .timeline__time {
   font-variant-numeric: tabular-nums;
