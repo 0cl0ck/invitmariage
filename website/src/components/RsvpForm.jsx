@@ -155,10 +155,10 @@ export default function RsvpForm({ variant }) {
           <>
             <Stepper
               id="guests"
-              label="Nombre de personnes"
+              label="Nombre de personnes (vous inclus)"
               value={form.guests}
               min={1}
-              max={12}
+              max={20}
               onChange={set("guests")}
             />
 

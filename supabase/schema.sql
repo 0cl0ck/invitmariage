@@ -39,8 +39,17 @@ create policy "carpool insert"
     or (type = 'offer' and seats is not null)
   );
 
--- Pas de policy UPDATE/DELETE => personne ne peut modifier/effacer via le site.
--- Les mariés modèrent depuis le dashboard Supabase (Table editor).
+-- Suppression autorisée (un invité peut retirer une annonce postée par erreur).
+-- NB: site privé (lien partagé aux invités) ; l'UI ne propose la suppression que
+-- sur les annonces créées depuis l'appareil courant. Les mariés peuvent aussi
+-- supprimer depuis le dashboard Supabase (Table editor).
+drop policy if exists "carpool delete" on public.carpool_entries;
+create policy "carpool delete"
+  on public.carpool_entries
+  for delete
+  using (true);
+
+-- Pas de policy UPDATE => pas de modification en place via le site.
 
 -- 3) Realtime : le tableau se met à jour en direct.
 alter publication supabase_realtime add table public.carpool_entries;

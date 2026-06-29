@@ -529,6 +529,36 @@ button {
   font-size: var(--fs-small);
   word-break: break-word;
 }
+.linklike {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.linklike:hover {
+  color: var(--color-cream);
+}
+.linklike--danger {
+  color: #d08a6a;
+}
+.linklike--danger:hover {
+  color: #e6a07a;
+}
+.carpool-entry__confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+.carpool-entry > .linklike {
+  margin-top: 0.6rem;
+}
 
 /* ----------------------------- RSVP -------------------------------------- */
 .section--rsvp {

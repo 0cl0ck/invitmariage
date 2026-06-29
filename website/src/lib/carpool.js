@@ -5,6 +5,7 @@ import { supabase, isSupabaseConfigured } from "./supabaseClient.js";
 
 const TABLE = "carpool_entries";
 const LOCAL_KEY = "carpool-entries-demo";
+const MINE_KEY = "carpool-mine"; // ids of entries created on THIS device (deletable)
 
 export const carpoolMode = isSupabaseConfigured ? "supabase" : "local";
 
@@ -38,6 +39,37 @@ function localWrite(list) {
   }
 }
 
+/* ---------------------- ownership (deletable by me) ---------------------- */
+function readMine() {
+  try {
+    return JSON.parse(localStorage.getItem(MINE_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+function addMine(id) {
+  if (!id) return;
+  try {
+    const s = readMine();
+    if (!s.includes(id)) {
+      s.push(id);
+      localStorage.setItem(MINE_KEY, JSON.stringify(s));
+    }
+  } catch {
+    /* ignore */
+  }
+}
+function removeMine(id) {
+  try {
+    localStorage.setItem(MINE_KEY, JSON.stringify(readMine().filter((x) => x !== id)));
+  } catch {
+    /* ignore */
+  }
+}
+export function getMyEntryIds() {
+  return readMine();
+}
+
 /* ------------------------------ public API ------------------------------- */
 export async function listEntries() {
   if (carpoolMode === "supabase") {
@@ -59,6 +91,7 @@ export async function addEntry(raw) {
   if (carpoolMode === "supabase") {
     const { data, error } = await supabase.from(TABLE).insert(entry).select().single();
     if (error) throw error;
+    addMine(data.id);
     return data;
   }
   const list = localRead();
@@ -69,9 +102,20 @@ export async function addEntry(raw) {
   };
   list.push(saved);
   localWrite(list);
-  // notify other tabs / our own subscriber
+  addMine(saved.id);
   window.dispatchEvent(new CustomEvent("carpool-local-change"));
   return saved;
+}
+
+export async function deleteEntry(id) {
+  if (carpoolMode === "supabase") {
+    const { error } = await supabase.from(TABLE).delete().eq("id", id);
+    if (error) throw error;
+  } else {
+    localWrite(localRead().filter((e) => e.id !== id));
+    window.dispatchEvent(new CustomEvent("carpool-local-change"));
+  }
+  removeMine(id);
 }
 
 /**

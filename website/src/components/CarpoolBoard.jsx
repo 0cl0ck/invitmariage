@@ -1,6 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { ButtonGroup, Stepper } from "./FormControls.jsx";
-import { listEntries, addEntry, subscribeEntries, carpoolMode } from "../lib/carpool.js";
+import {
+  listEntries,
+  addEntry,
+  deleteEntry,
+  subscribeEntries,
+  getMyEntryIds,
+  carpoolMode,
+} from "../lib/carpool.js";
 
 const emptyForm = {
   type: "offer",
@@ -12,7 +19,7 @@ const emptyForm = {
   company: "", // honeypot
 };
 
-function EntryCard({ entry }) {
+function EntryCard({ entry, deletable, confirming, onAskDelete, onConfirmDelete, onCancelDelete }) {
   return (
     <li className="carpool-entry">
       <div className="carpool-entry__head">
@@ -26,11 +33,28 @@ function EntryCard({ entry }) {
       <p className="carpool-entry__area">Départ : {entry.area}</p>
       {entry.note && <p className="carpool-entry__note">{entry.note}</p>}
       <p className="carpool-entry__contact">{entry.contact}</p>
+
+      {deletable &&
+        (confirming ? (
+          <p className="carpool-entry__confirm">
+            Supprimer cette annonce ?
+            <button type="button" className="linklike linklike--danger" onClick={onConfirmDelete}>
+              Oui
+            </button>
+            <button type="button" className="linklike" onClick={onCancelDelete}>
+              Annuler
+            </button>
+          </p>
+        ) : (
+          <button type="button" className="linklike linklike--danger" onClick={onAskDelete}>
+            Supprimer
+          </button>
+        ))}
     </li>
   );
 }
 
-function Column({ title, hint, entries }) {
+function Column({ title, hint, entries, myIds, confirmId, onAskDelete, onConfirmDelete, onCancelDelete }) {
   return (
     <div className="carpool-col">
       <h3 className="carpool-col__title">{title}</h3>
@@ -39,7 +63,15 @@ function Column({ title, hint, entries }) {
       ) : (
         <ul className="carpool-col__list">
           {entries.map((e) => (
-            <EntryCard key={e.id} entry={e} />
+            <EntryCard
+              key={e.id}
+              entry={e}
+              deletable={myIds.includes(e.id)}
+              confirming={confirmId === e.id}
+              onAskDelete={() => onAskDelete(e.id)}
+              onConfirmDelete={() => onConfirmDelete(e.id)}
+              onCancelDelete={() => onCancelDelete()}
+            />
           ))}
         </ul>
       )}
@@ -49,18 +81,20 @@ function Column({ title, hint, entries }) {
 
 export default function CarpoolBoard({ variant }) {
   const [entries, setEntries] = useState([]);
+  const [myIds, setMyIds] = useState(getMyEntryIds());
   const [status, setStatus] = useState("loading"); // loading | ready | error
   const [form, setForm] = useState(emptyForm);
   const [formOpen, setFormOpen] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirmId, setConfirmId] = useState(null);
 
   const refresh = useCallback(async () => {
     try {
       const data = await listEntries();
       setEntries(data);
+      setMyIds(getMyEntryIds());
       setStatus("ready");
-      // layout changed -> recompute scroll triggers
       window.__ST?.refresh?.();
     } catch {
       setStatus("error");
@@ -101,8 +135,26 @@ export default function CarpoolBoard({ variant }) {
     }
   };
 
+  const onConfirmDelete = async (id) => {
+    setConfirmId(null);
+    try {
+      await deleteEntry(id);
+      await refresh();
+    } catch {
+      setError("La suppression a échoué. Merci de réessayer.");
+    }
+  };
+
   const offers = entries.filter((e) => e.type === "offer");
   const seeks = entries.filter((e) => e.type === "seek");
+
+  const columnProps = {
+    myIds,
+    confirmId,
+    onAskDelete: setConfirmId,
+    onConfirmDelete,
+    onCancelDelete: () => setConfirmId(null),
+  };
 
   return (
     <section id="covoiturage" className="section section--carpool">
@@ -225,11 +277,13 @@ export default function CarpoolBoard({ variant }) {
               title="Je propose"
               hint="Aucune place proposée pour l'instant."
               entries={offers}
+              {...columnProps}
             />
             <Column
               title="Je cherche"
               hint="Personne ne cherche de place pour l'instant."
               entries={seeks}
+              {...columnProps}
             />
           </div>
         )}
