@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import CinematicHero from "../components/CinematicHero.jsx";
@@ -12,6 +12,9 @@ import { wedding } from "../content/variants.js";
 
 export default function InvitationPage({ variant }) {
   const rootRef = useRef(null);
+  // Until "Continuer" is clicked, the content below is removed from the document
+  // so there is nothing to scroll past — the visitor stops on the card (butée).
+  const [continued, setContinued] = useState(false);
 
   useEffect(() => {
     document.title = `${wedding.couple} · ${variant.navLabel} · ${wedding.city}`;
@@ -21,10 +24,14 @@ export default function InvitationPage({ variant }) {
     ).matches;
 
     const ctx = gsap.context(() => {
-      if (prefersReduced) return; // content is visible by default; skip motion
-      const items = gsap.utils.toArray(rootRef.current.querySelectorAll(".reveal"));
+      if (prefersReduced) return; // content visible by default; skip motion
+      // Only animate elements actually laid out (content is display:none until
+      // "Continuer"); this effect re-runs when `continued` flips.
+      const items = gsap.utils
+        .toArray(rootRef.current.querySelectorAll(".reveal"))
+        .filter((el) => el.offsetParent !== null);
+      if (!items.length) return;
       gsap.set(items, { opacity: 0, y: 42 });
-      // Reveal each section's elements in a soft cascade as they enter view.
       ScrollTrigger.batch(items, {
         start: "top 86%",
         once: true,
@@ -40,21 +47,41 @@ export default function InvitationPage({ variant }) {
       });
     }, rootRef);
 
-    // Recompute trigger positions after first paint / fonts.
     const raf = requestAnimationFrame(() => ScrollTrigger.refresh());
 
     return () => {
       cancelAnimationFrame(raf);
       ctx.revert();
     };
-  }, [variant]);
+  }, [variant, continued]);
 
+  const scrollToId = (id) => {
+    const target = document.getElementById(id);
+    if (!target) return;
+    if (window.__lenis) window.__lenis.scrollTo(target, { offset: 0 });
+    else target.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Reveal the content (if still gated), then scroll to a section.
+  const revealThenScroll = (id) => {
+    if (continued) {
+      scrollToId(id);
+      return;
+    }
+    setContinued(true);
+    // Wait for the content to mount + lay out before refreshing/scrolling.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        ScrollTrigger.refresh();
+        scrollToId(id);
+      }),
+    );
+  };
+
+  const handleContinue = () => revealThenScroll("apres-hero");
   const goToRsvp = (e) => {
     e.preventDefault();
-    const target = document.getElementById("rsvp");
-    if (!target) return;
-    if (window.__lenis) window.__lenis.scrollTo(target);
-    else target.scrollIntoView({ behavior: "smooth" });
+    revealThenScroll("rsvp");
   };
 
   return (
@@ -66,11 +93,14 @@ export default function InvitationPage({ variant }) {
         </a>
       </header>
 
-      <CinematicHero opening={variant.opening}>
+      <CinematicHero opening={variant.opening} onContinue={handleContinue}>
         <InvitationCard card={variant.card} />
       </CinematicHero>
 
-      <main className="content">
+      <main
+        id="apres-hero"
+        className={"content" + (continued ? "" : " content--locked")}
+      >
         <ProgramTimeline program={variant.program} />
         <InfoSection info={variant.info} />
         <CarpoolBoard variant={variant} />

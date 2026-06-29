@@ -294,6 +294,56 @@ button {
   background: linear-gradient(to bottom, var(--color-gold), transparent);
 }
 
+/* "Continuer" button revealed under the card at the end of the scrub */
+.hero-continue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 1.7rem;
+  padding: 0.72rem 1.7rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: rgba(28, 20, 16, 0.4);
+  backdrop-filter: blur(6px);
+  color: var(--color-cream);
+  font-family: var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.72rem;
+  transition: background-color 0.25s ease, transform 0.25s var(--ease-cinema);
+}
+.hero-continue:hover {
+  background: rgba(28, 20, 16, 0.65);
+  transform: translateY(-1px);
+}
+.hero-continue:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 3px;
+}
+.hero-continue__chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid var(--color-gold);
+  border-bottom: 1.5px solid var(--color-gold);
+  transform: rotate(45deg);
+  animation: heroChevron 1.6s ease-in-out infinite;
+}
+@keyframes heroChevron {
+  0%,
+  100% {
+    transform: rotate(45deg) translate(-1px, -1px);
+  }
+  50% {
+    transform: rotate(45deg) translate(2px, 2px);
+  }
+}
+
+/* Butée : tant que "Continuer" n'est pas cliqué, le contenu est retiré du flux
+   (rien à scroller sous le héros). */
+.content--locked {
+  display: none;
+}
+
 /* ------------------------- Invitation card ------------------------------- */
 .card {
   max-width: var(--card-max);

@@ -23,7 +23,7 @@ const clamp01 = (v) => Math.min(1, Math.max(0, v));
  *
  * Dev hook: window.__bgv = the background <canvas>.
  */
-export default function CinematicHero({ opening, children }) {
+export default function CinematicHero({ opening, children, onContinue }) {
   const sectionRef = useRef(null);
   const canvasRef = useRef(null);
   const overlayRef = useRef(null);
@@ -96,12 +96,12 @@ export default function CinematicHero({ opening, children }) {
 
       if (prefersReduced) {
         gsap.set(openingRef.current, { opacity: 0 });
-        gsap.set(revealRef.current, { opacity: 1, y: 0, scale: 1 });
+        gsap.set(revealRef.current, { opacity: 1, y: 0, scale: 1, pointerEvents: "auto" });
         gsap.set(hintRef.current, { opacity: 0 });
         return;
       }
 
-      gsap.set(revealRef.current, { opacity: 0, y: 30, scale: 0.965 });
+      gsap.set(revealRef.current, { opacity: 0, y: 30, scale: 0.965, pointerEvents: "none" });
 
       ScrollTrigger.create({
         trigger: sectionRef.current,
@@ -120,6 +120,7 @@ export default function CinematicHero({ opening, children }) {
             opacity: cp,
             y: 30 * (1 - cp),
             scale: 0.965 + 0.035 * cp,
+            pointerEvents: cp > 0.5 ? "auto" : "none",
           });
           gsap.set(overlayRef.current, { opacity: 0.45 + 0.35 * cp });
         },
@@ -165,6 +166,12 @@ export default function CinematicHero({ opening, children }) {
 
         <div className="hero-reveal" ref={revealRef}>
           {children}
+          {onContinue && (
+            <button type="button" className="hero-continue" onClick={onContinue}>
+              <span>Continuer</span>
+              <span className="hero-continue__chevron" aria-hidden="true" />
+            </button>
+          )}
         </div>
 
         <div className="scroll-hint" ref={hintRef} aria-hidden="true">
