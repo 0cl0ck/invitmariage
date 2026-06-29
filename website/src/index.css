@@ -273,6 +273,7 @@ button {
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;
+  pointer-events: none;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -338,6 +339,50 @@ button {
   font-size: 0.72rem;
   color: var(--color-rust);
   margin-bottom: 1.2rem;
+}
+
+/* ----------------------- Comet card (faire-part) ------------------------- */
+.comet {
+  perspective: 1200px;
+  width: min(100%, var(--card-max));
+  margin-inline: auto;
+}
+.comet__card {
+  position: relative;
+  transform-style: preserve-3d;
+  will-change: transform;
+  border-radius: 16px;
+  box-shadow:
+    rgba(0, 0, 0, 0.04) 0px 333px 133px 0px,
+    rgba(0, 0, 0, 0.26) 0px 83px 83px 0px,
+    rgba(0, 0, 0, 0.29) 0px 21px 46px 0px;
+}
+.comet .card {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  border-radius: 16px;
+  box-shadow: none;
+}
+.comet__glare {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: 16px;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  mix-blend-mode: overlay;
+  background: radial-gradient(
+    circle at var(--gx, 50%) var(--gy, 50%),
+    rgba(255, 255, 255, 0.9) 10%,
+    rgba(255, 255, 255, 0.75) 20%,
+    rgba(255, 255, 255, 0) 80%
+  );
+}
+/* The faded opening text overlaps the card cell — keep it from stealing hover. */
+.hero-opening {
+  pointer-events: none;
 }
 
 /* ---------------------------- Program ------------------------------------ */

@@ -72,11 +72,11 @@ const ceremonie = {
       {
         time: "12h30",
         name: "Réception",
-        place: "Le Princess Elizabeth",
+        place: "Princess Elizabeth",
       },
       {
         time: "16h30",
-        name: "Cérémonie religieuse",
+        name: "Célébration à l'église",
         place: "Temple protestant de Dunkerque · quai aux Bois",
       },
       {
@@ -125,10 +125,10 @@ const vinDhonneur = {
   card: {
     kicker: "Avec joie",
     names: wedding.couple,
-    intro: "Nous avons le plaisir de vous convier à notre cérémonie religieuse, suivie du vin d'honneur",
+    intro: "Nous avons le plaisir de vous convier à la célébration de notre mariage à l'église, suivie du vin d'honneur",
     dateLong: wedding.dateLong,
     place: "Temple protestant de Dunkerque",
-    footnote: "Cérémonie religieuse · Vin d'honneur",
+    footnote: "Célébration à l'église · Vin d'honneur",
   },
 
   program: {
@@ -137,7 +137,7 @@ const vinDhonneur = {
     steps: [
       {
         time: "16h30",
-        name: "Cérémonie religieuse",
+        name: "Célébration à l'église",
         place: "Temple protestant de Dunkerque · quai aux Bois",
       },
       {
