@@ -10,7 +10,7 @@ export const wedding = {
   city: "Dunkerque",
   season: "Automne 2026",
   dateLong: "Samedi 10 octobre 2026",
-  rsvpDeadline: "[ date limite à confirmer ]",
+  rsvpDeadline: "12 septembre 2026",
   contactEmails: ["hugodewas@gmail.com", "laura.arenas.n@gmail.com"],
 };
 

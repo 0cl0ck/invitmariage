@@ -51,8 +51,19 @@ create policy "carpool delete"
 
 -- Pas de policy UPDATE => pas de modification en place via le site.
 
--- 3) Realtime : le tableau se met à jour en direct.
-alter publication supabase_realtime add table public.carpool_entries;
+-- 3) Realtime : le tableau se met à jour en direct (idempotent : ne replante pas
+--    si la table est déjà membre de la publication).
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'carpool_entries'
+  ) then
+    alter publication supabase_realtime add table public.carpool_entries;
+  end if;
+end $$;
 
 -- ===========================================================================
 -- 4) RSVP — réponses des invités
