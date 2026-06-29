@@ -82,7 +82,10 @@ body {
   line-height: var(--leading-body);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
+  /* `clip` (not `hidden`) prevents horizontal scroll WITHOUT turning <body>
+     into a scroll container — otherwise it breaks the hero's position:sticky
+     pinning on mobile (the stage scrolls away instead of scrubbing in place). */
+  overflow-x: clip;
 }
 img,
 video {
@@ -197,7 +200,8 @@ button {
   position: sticky;
   top: 0;
   height: 100vh;
-  height: 100svh;
+  height: 100dvh; /* fill the live viewport so the collapsing mobile address bar
+                     never reveals the section below the pinned hero */
   overflow: hidden;
   display: grid;
   place-items: center;
