@@ -200,8 +200,10 @@ button {
   position: sticky;
   top: 0;
   height: 100vh;
-  height: 100dvh; /* fill the live viewport so the collapsing mobile address bar
-                     never reveals the section below the pinned hero */
+  /* lvh = viewport height with the mobile URL bar HIDDEN (the largest, and a
+     CONSTANT value). The stage fills that from the start, so the bar collapsing
+     on the first scroll just reveals more video — no resize jump, no gap below. */
+  height: 100lvh;
   overflow: hidden;
   display: grid;
   place-items: center;

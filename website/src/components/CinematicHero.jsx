@@ -64,10 +64,13 @@ export default function CinematicHero({ opening, children, onContinue }) {
     };
 
     const resize = () => {
-      const w = canvas.clientWidth || window.innerWidth;
-      const h = canvas.clientHeight || window.innerHeight;
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
+      const w = Math.round((canvas.clientWidth || window.innerWidth) * dpr);
+      const h = Math.round((canvas.clientHeight || window.innerHeight) * dpr);
+      // Skip no-op resizes (mobile URL-bar show/hide fires resize without a real
+      // size change now that the stage is 100lvh) — setting canvas.width clears it.
+      if (w === canvas.width && h === canvas.height) return;
+      canvas.width = w;
+      canvas.height = h;
       drawFrame(lastDrawn >= 0 ? lastDrawn : 0);
     };
 
