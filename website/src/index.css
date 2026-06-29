@@ -391,11 +391,20 @@ button {
   margin-bottom: 1rem;
 }
 .card__footnote {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
   text-transform: uppercase;
   letter-spacing: 0.18em;
   font-size: 0.72rem;
   color: var(--color-rust);
   margin-bottom: 1.2rem;
+}
+.card__footnote-item:not(:first-child)::before {
+  content: "·";
+  margin: 0 0.5rem;
+  color: var(--color-gold);
 }
 
 /* ----------------------- Comet card (faire-part) ------------------------- */
@@ -991,6 +1000,14 @@ button {
   }
   .carpool-board {
     grid-template-columns: 1fr;
+  }
+  /* Card footnote: one centered item per line on mobile (no "·" separators). */
+  .card__footnote {
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .card__footnote-item:not(:first-child)::before {
+    content: none;
   }
 }
 

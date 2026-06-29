@@ -52,7 +52,7 @@ const ceremonie = {
     intro: "Nous avons le bonheur de vous convier à célébrer notre mariage",
     dateLong: wedding.dateLong,
     place: "Hôtel de Ville de Dunkerque",
-    footnote: "Cérémonie · Réception · Vin d'honneur",
+    footnote: ["Cérémonie", "Réception", "Vin d'honneur"],
   },
 
   program: {
@@ -77,12 +77,12 @@ const ceremonie = {
       {
         time: "16h30",
         name: "Célébration à l'église",
-        place: "Temple protestant de Dunkerque · quai aux Bois",
+        place: "Temple protestant de Dunkerque",
       },
       {
         time: "17h45",
         name: "Vin d'honneur",
-        place: "Temple protestant de Dunkerque · quai aux Bois",
+        place: "Temple protestant de Dunkerque",
       },
     ],
   },
@@ -128,7 +128,7 @@ const vinDhonneur = {
     intro: "Nous avons le plaisir de vous convier à la célébration de notre mariage à l'église, suivie du vin d'honneur",
     dateLong: wedding.dateLong,
     place: "Temple protestant de Dunkerque",
-    footnote: "Célébration à l'église · Vin d'honneur",
+    footnote: ["Célébration à l'église", "Vin d'honneur"],
   },
 
   program: {
@@ -138,12 +138,12 @@ const vinDhonneur = {
       {
         time: "16h30",
         name: "Célébration à l'église",
-        place: "Temple protestant de Dunkerque · quai aux Bois",
+        place: "Temple protestant de Dunkerque",
       },
       {
         time: "17h45",
         name: "Vin d'honneur",
-        place: "Temple protestant de Dunkerque · quai aux Bois",
+        place: "Temple protestant de Dunkerque",
       },
     ],
   },

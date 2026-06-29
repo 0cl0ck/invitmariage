@@ -10,7 +10,15 @@ export default function InvitationCard({ card }) {
         <h2 className="card__names">{card.names}</h2>
         <p className="card__date">{card.dateLong}</p>
         <p className="card__place">{card.place}</p>
-        <p className="card__footnote">{card.footnote}</p>
+        <p className="card__footnote">
+          {(Array.isArray(card.footnote) ? card.footnote : [card.footnote]).map(
+            (item, i) => (
+              <span className="card__footnote-item" key={i}>
+                {item}
+              </span>
+            ),
+          )}
+        </p>
         <div className="card__rule" aria-hidden="true" />
       </article>
     </CometCard>
