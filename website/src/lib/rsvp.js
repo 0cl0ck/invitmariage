@@ -46,10 +46,13 @@ export async function submitResponse(raw) {
     throw new Error("missing-fields");
   }
   if (rsvpMode === "supabase") {
-    const { data, error } = await supabase.from(TABLE).insert(entry).select().single();
+    // IMPORTANT: do NOT chain .select() here. Reading the row back is reserved
+    // to authenticated mariés (RLS), so a guest insert + read-back would fail
+    // with "new row violates row-level security policy". Insert only.
+    const { error } = await supabase.from(TABLE).insert(entry);
     if (error) throw error;
     saveMine(entry);
-    return data;
+    return entry;
   }
   const list = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
   const saved = { ...entry, id: `local-${Date.now()}`, created_at: new Date().toISOString() };

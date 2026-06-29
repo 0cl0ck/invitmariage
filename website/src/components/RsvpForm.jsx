@@ -67,7 +67,11 @@ export default function RsvpForm({ variant }) {
       setWasCorrection(isCorrection);
       setIsCorrection(true); // a further submit is now a correction
       setSubmitted(true);
-    } catch {
+    } catch (err) {
+      // Surface the real cause in the browser console (this is a client->Supabase
+      // call; it never reaches the Vercel server logs).
+      // eslint-disable-next-line no-console
+      console.error("[RSVP] échec d'envoi :", err);
       setError("Une erreur est survenue à l'envoi. Merci de réessayer.");
     } finally {
       setSaving(false);

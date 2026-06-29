@@ -350,7 +350,8 @@ button {
 .comet__card {
   position: relative;
   transform-style: preserve-3d;
-  will-change: transform;
+  /* will-change is toggled from JS only during an active hover (CometCard.jsx),
+     so touch / reduced-motion users never get a permanent compositor layer. */
   border-radius: 16px;
   box-shadow:
     rgba(0, 0, 0, 0.04) 0px 333px 133px 0px,
@@ -897,8 +898,8 @@ button {
 /* --------------------------- Responsive ---------------------------------- */
 @media (max-width: 820px) {
   :root {
-    /* Shorter hero on mobile: poster is static, no need for a long scrub run. */
-    --hero-scroll: 175vh;
+    /* Mobile also scrubs the video — keep enough scroll length for a smooth run. */
+    --hero-scroll: 320vh;
   }
   .timeline__item {
     grid-template-columns: auto 5.5rem 1fr;

@@ -55,9 +55,10 @@ export default function CometCard({ children, className = "" }) {
       }
     };
     const onEnter = () => {
+      el.style.willChange = "transform"; // promote only while interacting
       sc(1.05);
       tZ(50);
-      if (glare) glare.style.opacity = "0.5";
+      if (glare) glare.style.opacity = "0.6";
     };
     const onLeave = () => {
       rotX(0);
@@ -67,6 +68,7 @@ export default function CometCard({ children, className = "" }) {
       sc(1);
       tZ(0);
       if (glare) glare.style.opacity = "0";
+      el.style.willChange = "";
     };
 
     el.addEventListener("pointerenter", onEnter);

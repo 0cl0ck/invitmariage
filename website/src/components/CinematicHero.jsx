@@ -9,11 +9,10 @@ const FALLBACK_DURATION = 8.04; // seconds (real video length)
 
 function detectCanScrub() {
   if (typeof window === "undefined" || !window.matchMedia) return false;
-  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const coarse = window.matchMedia("(pointer: coarse)").matches;
-  const small = window.matchMedia("(max-width: 820px)").matches;
-  // Scrubbing a <video> via currentTime is only reliable on desktop pointers.
-  return !reduced && !coarse && !small;
+  // Scrub on ALL devices (mobile included) — the video is all-keyframe H.264 so
+  // currentTime seeking is reliable, and we prime it on first touch for iOS.
+  // Only reduced-motion opts out (accessibility).
+  return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
@@ -23,9 +22,8 @@ const clamp01 = (v) => Math.min(1, Math.max(0, v));
  * footage. Scroll progress drives video.currentTime; the centered invitation
  * card (passed as children) fades in on the final frames.
  *
- * Fallbacks:
- *  - mobile / coarse pointer / small screen -> static poster, no scrub
- *  - prefers-reduced-motion                 -> static poster, instant reveal
+ * Scrubs on all devices (mobile included). Fallback:
+ *  - prefers-reduced-motion -> static poster, instant reveal
  *
  * Dev hook: window.__bgv = the background <video> element.
  */
@@ -46,6 +44,8 @@ export default function CinematicHero({ opening, children }) {
     const prefersReduced = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
+
+    let primeCleanup = () => {};
 
     const ctx = gsap.context(() => {
       // Starting states
@@ -121,9 +121,26 @@ export default function CinematicHero({ opening, children }) {
         video.addEventListener("loadedmetadata", onReady, { once: true });
       }
       video.addEventListener("loadeddata", onReady, { once: true });
+
+      // Start buffering, and "prime" the video on the first user gesture so
+      // iOS/Safari permits frame-accurate currentTime seeking during the scrub.
+      video.load();
+      const prime = () => {
+        const played = video.play();
+        if (played && typeof played.then === "function") {
+          played.then(() => video.pause()).catch(() => {});
+        }
+      };
+      window.addEventListener("touchstart", prime, { once: true, passive: true });
+      window.addEventListener("pointerdown", prime, { once: true });
+      primeCleanup = () => {
+        window.removeEventListener("touchstart", prime);
+        window.removeEventListener("pointerdown", prime);
+      };
     }, sectionRef);
 
     return () => {
+      primeCleanup();
       ctx.revert();
       if (window.__bgv === video) window.__bgv = undefined;
     };
