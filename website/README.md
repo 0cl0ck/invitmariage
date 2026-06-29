@@ -30,22 +30,29 @@ pnpm preview                # prévisualiser le build
 > (BrowserRouter) ; pour un hébergement statique, un *fallback SPA* est requis :
 > `public/_redirects` (Netlify) et `vercel.json` (Vercel) sont déjà fournis.
 
-## Assets
+## Assets — héros au scroll (frames sur canvas)
 
-- `public/img/mairie-dunkerque-hero.jpg` — poster héros (1ʳᵉ frame, fournie par les mariés).
-- `public/bg.mp4` — vidéo d'approche **réelle**, ré-encodée all-keyframe H.264
-  (via `../scripts/encode-bg.mjs`). **Jamais générée** — cf. `../copy/asset-plan.md`.
+Le héros n'utilise PAS une `<video>` scrubbée (le seek vidéo est bridé sur mobile →
+saccades). La vidéo réelle est **pré-extraite en frames WebP** dessinées sur un
+`<canvas>` au scroll → fluide sur **tous** les appareils.
+
+- `public/frames/frame-XXX.webp` — ~105 frames 1280×720 (même résolution que la
+  source), générées par `../scripts/extract-frames.mjs`. **Jamais générées par IA**
+  — cf. `../copy/asset-plan.md`.
+- `src/lib/frames-manifest.js` — auto-généré (nombre de frames, format).
+- Régénérer : `node ../scripts/extract-frames.mjs [fps] [quality]` (défaut 18/72 ;
+  on a utilisé `13 58` pour ~105 frames / ~7,7 Mo).
 
 ## Hooks de debug (console navigateur)
 
 - `window.__lenis` — instance Lenis (`null` si `prefers-reduced-motion`).
 - `window.__ST` — `ScrollTrigger` de GSAP.
-- `window.__bgv` — l'élément `<video>` de fond.
+- `window.__bgv` — le `<canvas>` de fond (héros).
 
 ## Fallbacks
 
-- **Mobile / pointeur tactile / petit écran** : pas de scrub vidéo, poster statique + révélation au scroll.
-- **`prefers-reduced-motion`** : poster statique, carte affichée immédiatement, animations neutralisées.
+- **`prefers-reduced-motion`** : 1ʳᵉ frame statique, carte affichée immédiatement, animations neutralisées.
+- Le scrub par frames fonctionne sur mobile et desktop (plus de fallback poster statique sur mobile).
 
 ## Covoiturage (Supabase)
 
