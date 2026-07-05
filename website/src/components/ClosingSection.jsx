@@ -1,6 +1,7 @@
-import { wedding } from "../content/variants.js";
+import { useDict } from "../i18n/LanguageContext.jsx";
 
 export default function ClosingSection({ variant }) {
+  const { wedding } = useDict();
   const closing = variant.closing;
   return (
     <footer className="section section--closing">

@@ -8,9 +8,12 @@ import InfoSection from "../components/InfoSection.jsx";
 import CarpoolBoard from "../components/CarpoolBoard.jsx";
 import RsvpForm from "../components/RsvpForm.jsx";
 import ClosingSection from "../components/ClosingSection.jsx";
-import { wedding } from "../content/variants.js";
+import LanguageToggle from "../components/LanguageToggle.jsx";
+import { useDict } from "../i18n/LanguageContext.jsx";
 
-export default function InvitationPage({ variant }) {
+export default function InvitationPage({ variantKey }) {
+  const { wedding, variants, ui } = useDict();
+  const variant = variants[variantKey];
   const rootRef = useRef(null);
   // Until "Continuer" is clicked, the content below is removed from the document
   // so there is nothing to scroll past — the visitor stops on the card (butée).
@@ -53,7 +56,7 @@ export default function InvitationPage({ variant }) {
       cancelAnimationFrame(raf);
       ctx.revert();
     };
-  }, [variant, continued]);
+  }, [variant, wedding, continued]);
 
   const smoothScrollTo = (id) => {
     const target = document.getElementById(id);
@@ -100,12 +103,19 @@ export default function InvitationPage({ variant }) {
     <div className="page" ref={rootRef}>
       <header className="topbar">
         <span className="topbar__monogram">{wedding.monogram}</span>
-        <a className="topbar__cta" href="#rsvp" onClick={goToRsvp}>
-          Répondre
-        </a>
+        <div className="topbar__actions">
+          <LanguageToggle />
+          <a className="topbar__cta" href="#rsvp" onClick={goToRsvp}>
+            {ui.topbar.respond}
+          </a>
+        </div>
       </header>
 
-      <CinematicHero opening={variant.opening} onContinue={handleContinue}>
+      <CinematicHero
+        opening={variant.opening}
+        continueLabel={ui.hero.continue}
+        onContinue={handleContinue}
+      >
         <InvitationCard card={variant.card} />
       </CinematicHero>
 

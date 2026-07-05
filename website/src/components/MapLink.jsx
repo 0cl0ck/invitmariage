@@ -1,8 +1,10 @@
 import { mapsUrl } from "../lib/maps.js";
+import { useDict } from "../i18n/LanguageContext.jsx";
 
-// Small "Itinéraire" link (map-pin icon) opening Google Maps directions to a
+// Small directions link (map-pin icon) opening Google Maps directions to a
 // place. Renders nothing when the place is unknown / "à confirmer".
-export default function MapLink({ place, label = "Itinéraire", className = "" }) {
+export default function MapLink({ place, label, className = "" }) {
+  const { ui } = useDict();
   const url = mapsUrl(place);
   if (!url) return null;
   return (
@@ -11,7 +13,7 @@ export default function MapLink({ place, label = "Itinéraire", className = "" }
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`Itinéraire vers ${place} (Google Maps)`}
+      aria-label={ui.map.aria(place)}
     >
       <svg
         className="map-link__icon"
@@ -26,7 +28,7 @@ export default function MapLink({ place, label = "Itinéraire", className = "" }
           d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"
         />
       </svg>
-      <span>{label}</span>
+      <span>{label ?? ui.map.label}</span>
     </a>
   );
 }

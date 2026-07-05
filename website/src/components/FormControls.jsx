@@ -1,4 +1,5 @@
 /* Shared form controls: real-button segmented control + numeric stepper. */
+import { useDict } from "../i18n/LanguageContext.jsx";
 
 export function ButtonGroup({ legend, value, options, onChange }) {
   return (
@@ -22,6 +23,7 @@ export function ButtonGroup({ legend, value, options, onChange }) {
 }
 
 export function Stepper({ id, label, value, min, max, onChange }) {
+  const { ui } = useDict();
   const n = parseInt(value || `${min}`, 10) || min;
   const set = (v) => onChange(String(Math.min(max, Math.max(min, v))));
   return (
@@ -31,7 +33,7 @@ export function Stepper({ id, label, value, min, max, onChange }) {
         <button
           type="button"
           className="stepper__btn"
-          aria-label="Diminuer"
+          aria-label={ui.stepper.decrease}
           onClick={() => set(n - 1)}
         >
           −
@@ -48,7 +50,7 @@ export function Stepper({ id, label, value, min, max, onChange }) {
         <button
           type="button"
           className="stepper__btn"
-          aria-label="Augmenter"
+          aria-label={ui.stepper.increase}
           onClick={() => set(n + 1)}
         >
           +

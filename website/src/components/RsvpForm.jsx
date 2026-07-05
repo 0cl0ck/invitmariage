@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { wedding } from "../content/variants.js";
+import { useDict } from "../i18n/LanguageContext.jsx";
 import { ButtonGroup, Stepper } from "./FormControls.jsx";
 import { submitResponse, getMyResponse } from "../lib/rsvp.js";
 
@@ -29,6 +29,8 @@ function prefillFrom(prior) {
 }
 
 export default function RsvpForm({ variant }) {
+  const { wedding, ui } = useDict();
+  const t = ui.rsvp;
   const rsvp = variant.rsvp;
   const prior = getMyResponse();
   const [form, setForm] = useState(() => prefillFrom(prior));
@@ -43,7 +45,7 @@ export default function RsvpForm({ variant }) {
 
   const contactLinks = wedding.contactEmails.map((m, i) => (
     <span key={m}>
-      {i > 0 ? " ou " : ""}
+      {i > 0 ? t.emailSep : ""}
       <a href={`mailto:${m}`}>{m}</a>
     </span>
   ));
@@ -57,7 +59,7 @@ export default function RsvpForm({ variant }) {
       return;
     }
     if (!form.name.trim() || !form.email.trim() || !form.attending) {
-      setError("Merci de renseigner votre nom, votre email et votre réponse.");
+      setError(t.errorRequired);
       return;
     }
 
@@ -72,7 +74,7 @@ export default function RsvpForm({ variant }) {
       // call; it never reaches the Vercel server logs).
       // eslint-disable-next-line no-console
       console.error("[RSVP] échec d'envoi :", err);
-      setError("Une erreur est survenue à l'envoi. Merci de réessayer.");
+      setError(t.errorSubmit);
     } finally {
       setSaving(false);
     }
@@ -83,21 +85,21 @@ export default function RsvpForm({ variant }) {
     return (
       <div className="container rsvp">
         <div className="rsvp__confirm reveal">
-          <p className="kicker">Merci</p>
+          <p className="kicker">{t.thanksKicker}</p>
           <h2 className="section-title">
             {wasCorrection
-              ? "Votre réponse a bien été mise à jour."
+              ? t.thanksUpdated
               : happy
-                ? "Merci, nous avons hâte de vous voir !"
-                : "Merci de nous avoir prévenus, vous nous manquerez."}
+                ? t.thanksYes
+                : t.thanksNo}
           </h2>
-          <p className="rsvp__note">Une question ? Écrivez-nous à {contactLinks}.</p>
+          <p className="rsvp__note">{t.contactBefore}{contactLinks}.</p>
           <button
             type="button"
             className="btn btn--ghost"
             onClick={() => setSubmitted(false)}
           >
-            Modifier ma réponse
+            {t.editAnswer}
           </button>
         </div>
       </div>
@@ -115,16 +117,14 @@ export default function RsvpForm({ variant }) {
       </header>
 
       {isCorrection && (
-        <p className="rsvp__correction reveal">
-          Vous avez déjà répondu — vous pouvez modifier votre réponse ci-dessous.
-        </p>
+        <p className="rsvp__correction reveal">{t.correction}</p>
       )}
 
       <form className="rsvp__form reveal" onSubmit={handleSubmit} noValidate>
         {/* Honeypot (hidden from humans) */}
         <div className="rsvp__hp" aria-hidden="true">
           <label>
-            Ne pas remplir
+            {t.honeypot}
             <input
               type="text"
               tabIndex={-1}
@@ -136,22 +136,22 @@ export default function RsvpForm({ variant }) {
         </div>
 
         <div className="field">
-          <label htmlFor="name">Votre nom (ou celui du foyer)*</label>
+          <label htmlFor="name">{t.nameLabel}</label>
           <input id="name" type="text" value={form.name} onChange={setEvt("name")} required />
         </div>
 
         <div className="field">
-          <label htmlFor="email">Email*</label>
+          <label htmlFor="email">{t.emailLabel}</label>
           <input id="email" type="email" value={form.email} onChange={setEvt("email")} required />
         </div>
 
         <ButtonGroup
-          legend="Serez-vous présent(e) ?*"
+          legend={t.attendingLegend}
           value={form.attending}
           onChange={set("attending")}
           options={[
-            { value: "yes", label: "Avec plaisir" },
-            { value: "no", label: "Malheureusement non" },
+            { value: "yes", label: t.attendingYes },
+            { value: "no", label: t.attendingNo },
           ]}
         />
 
@@ -159,7 +159,7 @@ export default function RsvpForm({ variant }) {
           <>
             <Stepper
               id="guests"
-              label="Nombre de personnes (vous inclus)"
+              label={t.guestsLabel}
               value={form.guests}
               min={1}
               max={20}
@@ -169,7 +169,7 @@ export default function RsvpForm({ variant }) {
             {rsvp.askChildren && (
               <Stepper
                 id="children"
-                label="Dont enfants"
+                label={t.childrenLabel}
                 value={form.children}
                 min={0}
                 max={10}
@@ -179,13 +179,13 @@ export default function RsvpForm({ variant }) {
 
             {rsvp.askDietary && (
               <div className="field">
-                <label htmlFor="dietary">Régime alimentaire / allergies</label>
+                <label htmlFor="dietary">{t.dietaryLabel}</label>
                 <input
                   id="dietary"
                   type="text"
                   value={form.dietary}
                   onChange={setEvt("dietary")}
-                  placeholder="Optionnel"
+                  placeholder={t.dietaryPlaceholder}
                 />
               </div>
             )}
@@ -193,7 +193,7 @@ export default function RsvpForm({ variant }) {
         )}
 
         <div className="field">
-          <label htmlFor="message">Un mot pour les mariés (optionnel)</label>
+          <label htmlFor="message">{t.messageLabel}</label>
           <textarea id="message" rows={3} value={form.message} onChange={setEvt("message")} />
         </div>
 
@@ -201,10 +201,10 @@ export default function RsvpForm({ variant }) {
 
         <button type="submit" className="btn btn--gold" disabled={saving}>
           {saving
-            ? "Envoi…"
+            ? t.submitSending
             : isCorrection
-              ? "Mettre à jour ma réponse"
-              : "J'envoie ma réponse"}
+              ? t.submitUpdate
+              : t.submitSend}
         </button>
       </form>
     </div>

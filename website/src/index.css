@@ -173,6 +173,12 @@ button {
   color: var(--color-cream);
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6);
 }
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.5rem, 2vw, 0.9rem);
+  pointer-events: auto;
+}
 .topbar__cta {
   pointer-events: auto;
   color: var(--color-cream);
@@ -189,6 +195,40 @@ button {
 .topbar__cta:hover {
   background: rgba(28, 20, 16, 0.55);
   text-decoration: none;
+}
+
+/* Sélecteur de langue FR / ES */
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  backdrop-filter: blur(6px);
+  background: rgba(28, 20, 16, 0.25);
+}
+.lang-toggle__btn {
+  pointer-events: auto;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  padding: 0.42rem 0.6rem;
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+.lang-toggle__btn + .lang-toggle__btn {
+  border-left: 1px solid var(--color-line);
+}
+.lang-toggle__btn:hover {
+  color: var(--color-cream);
+}
+.lang-toggle__btn.is-active {
+  color: var(--color-bg);
+  background: var(--color-gold);
 }
 
 /* ------------------------------ Hero ------------------------------------- */

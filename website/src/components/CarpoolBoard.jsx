@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useDict } from "../i18n/LanguageContext.jsx";
 import { ButtonGroup, Stepper } from "./FormControls.jsx";
 import {
   listEntries,
@@ -19,42 +20,40 @@ const emptyForm = {
   company: "", // honeypot
 };
 
-function EntryCard({ entry, deletable, confirming, onAskDelete, onConfirmDelete, onCancelDelete }) {
+function EntryCard({ entry, deletable, confirming, onAskDelete, onConfirmDelete, onCancelDelete, t }) {
   return (
     <li className="carpool-entry">
       <div className="carpool-entry__head">
         <span className="carpool-entry__name">{entry.name}</span>
         {entry.type === "offer" && entry.seats != null && (
-          <span className="carpool-entry__seats">
-            {entry.seats} place{entry.seats > 1 ? "s" : ""}
-          </span>
+          <span className="carpool-entry__seats">{t.seats(entry.seats)}</span>
         )}
       </div>
-      <p className="carpool-entry__area">Départ : {entry.area}</p>
+      <p className="carpool-entry__area">{t.departure}{entry.area}</p>
       {entry.note && <p className="carpool-entry__note">{entry.note}</p>}
       <p className="carpool-entry__contact">{entry.contact}</p>
 
       {deletable &&
         (confirming ? (
           <p className="carpool-entry__confirm">
-            Supprimer cette annonce ?
+            {t.confirmDelete}
             <button type="button" className="linklike linklike--danger" onClick={onConfirmDelete}>
-              Oui
+              {t.yes}
             </button>
             <button type="button" className="linklike" onClick={onCancelDelete}>
-              Annuler
+              {t.cancel}
             </button>
           </p>
         ) : (
           <button type="button" className="linklike linklike--danger" onClick={onAskDelete}>
-            Supprimer
+            {t.delete}
           </button>
         ))}
     </li>
   );
 }
 
-function Column({ title, hint, entries, myIds, confirmId, onAskDelete, onConfirmDelete, onCancelDelete }) {
+function Column({ title, hint, entries, myIds, confirmId, onAskDelete, onConfirmDelete, onCancelDelete, t }) {
   return (
     <div className="carpool-col">
       <h3 className="carpool-col__title">{title}</h3>
@@ -71,6 +70,7 @@ function Column({ title, hint, entries, myIds, confirmId, onAskDelete, onConfirm
               onAskDelete={() => onAskDelete(e.id)}
               onConfirmDelete={() => onConfirmDelete(e.id)}
               onCancelDelete={() => onCancelDelete()}
+              t={t}
             />
           ))}
         </ul>
@@ -80,6 +80,8 @@ function Column({ title, hint, entries, myIds, confirmId, onAskDelete, onConfirm
 }
 
 export default function CarpoolBoard({ variant }) {
+  const { ui } = useDict();
+  const t = ui.carpool;
   const [entries, setEntries] = useState([]);
   const [myIds, setMyIds] = useState(getMyEntryIds());
   const [status, setStatus] = useState("loading"); // loading | ready | error
@@ -119,7 +121,7 @@ export default function CarpoolBoard({ variant }) {
       return; // honeypot
     }
     if (!form.name.trim() || !form.area.trim() || !form.contact.trim()) {
-      setError("Merci d'indiquer un prénom, un secteur de départ et un contact.");
+      setError(t.errorRequired);
       return;
     }
     setSaving(true);
@@ -129,7 +131,7 @@ export default function CarpoolBoard({ variant }) {
       setFormOpen(false);
       await refresh();
     } catch {
-      setError("Une erreur est survenue. Merci de réessayer.");
+      setError(t.errorSubmit);
     } finally {
       setSaving(false);
     }
@@ -141,7 +143,7 @@ export default function CarpoolBoard({ variant }) {
       await deleteEntry(id);
       await refresh();
     } catch {
-      setError("La suppression a échoué. Merci de réessayer.");
+      setError(t.errorDelete);
     }
   };
 
@@ -154,29 +156,23 @@ export default function CarpoolBoard({ variant }) {
     onAskDelete: setConfirmId,
     onConfirmDelete,
     onCancelDelete: () => setConfirmId(null),
+    t,
   };
 
   return (
     <section id="covoiturage" className="section section--carpool">
       <div className="container">
         <header className="section-head reveal">
-          <p className="kicker">Entraide</p>
-          <h2 className="section-title">Covoiturage</h2>
-          <p className="carpool__intro">
-            Organisez-vous entre invités : proposez des places ou trouvez un trajet.
-          </p>
-          {carpoolMode === "local" && (
-            <p className="carpool__demo">
-              Mode démo (local à cet appareil) — la base partagée sera activée à la
-              configuration de Supabase.
-            </p>
-          )}
+          <p className="kicker">{t.kicker}</p>
+          <h2 className="section-title">{t.title}</h2>
+          <p className="carpool__intro">{t.intro}</p>
+          {carpoolMode === "local" && <p className="carpool__demo">{t.demo}</p>}
         </header>
 
         <div className="carpool-actions reveal">
           {!formOpen && (
             <button type="button" className="btn btn--gold" onClick={() => setFormOpen(true)}>
-              + Publier une annonce
+              {t.publishCta}
             </button>
           )}
         </div>
@@ -185,7 +181,7 @@ export default function CarpoolBoard({ variant }) {
           <form className="carpool-form reveal" onSubmit={handleSubmit} noValidate>
             <div className="rsvp__hp" aria-hidden="true">
               <label>
-                Ne pas remplir
+                {t.honeypot}
                 <input
                   type="text"
                   tabIndex={-1}
@@ -197,35 +193,35 @@ export default function CarpoolBoard({ variant }) {
             </div>
 
             <ButtonGroup
-              legend="Type d'annonce"
+              legend={t.typeLegend}
               value={form.type}
               onChange={set("type")}
               options={[
-                { value: "offer", label: "Je propose des places" },
-                { value: "seek", label: "Je cherche une place" },
+                { value: "offer", label: t.typeOffer },
+                { value: "seek", label: t.typeSeek },
               ]}
             />
 
             <div className="field">
-              <label htmlFor="cp-name">Prénom*</label>
+              <label htmlFor="cp-name">{t.nameLabel}</label>
               <input id="cp-name" type="text" value={form.name} onChange={setEvt("name")} />
             </div>
 
             <div className="field">
-              <label htmlFor="cp-area">Secteur de départ*</label>
+              <label htmlFor="cp-area">{t.areaLabel}</label>
               <input
                 id="cp-area"
                 type="text"
                 value={form.area}
                 onChange={setEvt("area")}
-                placeholder="Ville / quartier"
+                placeholder={t.areaPlaceholder}
               />
             </div>
 
             {form.type === "offer" && (
               <Stepper
                 id="cp-seats"
-                label="Places disponibles"
+                label={t.seatsLabel}
                 value={form.seats}
                 min={1}
                 max={8}
@@ -234,18 +230,18 @@ export default function CarpoolBoard({ variant }) {
             )}
 
             <div className="field">
-              <label htmlFor="cp-contact">Contact* (téléphone ou email)</label>
+              <label htmlFor="cp-contact">{t.contactLabel}</label>
               <input
                 id="cp-contact"
                 type="text"
                 value={form.contact}
                 onChange={setEvt("contact")}
-                placeholder="Visible par les invités"
+                placeholder={t.contactPlaceholder}
               />
             </div>
 
             <div className="field">
-              <label htmlFor="cp-note">Précisions (optionnel)</label>
+              <label htmlFor="cp-note">{t.noteLabel}</label>
               <input id="cp-note" type="text" value={form.note} onChange={setEvt("note")} />
             </div>
 
@@ -253,7 +249,7 @@ export default function CarpoolBoard({ variant }) {
 
             <div className="carpool-form__actions">
               <button type="submit" className="btn btn--gold" disabled={saving}>
-                {saving ? "Publication…" : "Publier"}
+                {saving ? t.submitPublishing : t.submitPublish}
               </button>
               <button
                 type="button"
@@ -263,25 +259,25 @@ export default function CarpoolBoard({ variant }) {
                   setError("");
                 }}
               >
-                Annuler
+                {t.cancel}
               </button>
             </div>
           </form>
         )}
 
         {status === "error" ? (
-          <p className="rsvp__error">Le tableau n'a pas pu être chargé. Réessayez plus tard.</p>
+          <p className="rsvp__error">{t.errorLoad}</p>
         ) : (
           <div className="carpool-board">
             <Column
-              title="Je propose"
-              hint="Aucune place proposée pour l'instant."
+              title={t.colOffer}
+              hint={t.colOfferEmpty}
               entries={offers}
               {...columnProps}
             />
             <Column
-              title="Je cherche"
-              hint="Personne ne cherche de place pour l'instant."
+              title={t.colSeek}
+              hint={t.colSeekEmpty}
               entries={seeks}
               {...columnProps}
             />

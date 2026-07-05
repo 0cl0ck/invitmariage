@@ -23,7 +23,7 @@ const clamp01 = (v) => Math.min(1, Math.max(0, v));
  *
  * Dev hook: window.__bgv = the background <canvas>.
  */
-export default function CinematicHero({ opening, children, onContinue }) {
+export default function CinematicHero({ opening, children, onContinue, continueLabel }) {
   const sectionRef = useRef(null);
   const canvasRef = useRef(null);
   const overlayRef = useRef(null);
@@ -171,7 +171,7 @@ export default function CinematicHero({ opening, children, onContinue }) {
           {children}
           {onContinue && (
             <button type="button" className="hero-continue" onClick={onContinue}>
-              <span>Continuer</span>
+              <span>{continueLabel}</span>
               <span className="hero-continue__chevron" aria-hidden="true" />
             </button>
           )}
