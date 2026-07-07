@@ -5,7 +5,7 @@
 //
 // Structure : `dict[lang]` expose { htmlLang, locale, wedding, variants, ui }.
 // - `wedding`  : infos du couple (certaines invariantes, d'autres localisées).
-// - `variants` : { ceremonie, vinDhonneur } — la copy propre à chaque variante.
+// - `variants` : { ceremonie } — invitation unique (une seule copy de programme).
 // - `ui`       : tous les libellés d'interface (boutons, formulaires, erreurs…).
 //
 // ⚠️ Les noms de lieux (`place`) restent identiques dans les deux langues :
@@ -21,7 +21,7 @@ const contactEmails = ["hugodewas@gmail.com", "laura.arenas.n@gmail.com"];
 
 // Lieux (noms propres — non traduits, cf. remarque en tête de fichier).
 const PLACE_MAIRIE = "Hôtel de Ville de Dunkerque";
-const PLACE_RECEPTION = "Princess Elizabeth";
+const PLACE_RECEPTION = "Bateau Princess Elizabeth";
 const PLACE_TEMPLE = "Temple protestant de Dunkerque";
 
 // ===========================================================================
@@ -69,17 +69,16 @@ const ceremonieFr = {
     intro: "Nous avons le bonheur de vous convier à célébrer notre mariage",
     dateLong: weddingFr.dateLong,
     place: PLACE_MAIRIE,
-    footnote: ["Cérémonie", "Réception", "Vin d'honneur"],
+    footnote: ["Cérémonie", "Église", "Réception"],
   },
   program: {
     kicker: "Programme",
     title: "Le déroulé du jour",
     steps: [
-      { time: "10h45", name: "Accueil des invités", place: PLACE_MAIRIE },
-      { time: "11h00", name: "Cérémonie civile", place: PLACE_MAIRIE },
-      { time: "12h30", name: "Réception", place: PLACE_RECEPTION },
-      { time: "16h30", name: "Célébration à l'église", place: PLACE_TEMPLE },
-      { time: "17h45", name: "Vin d'honneur", place: PLACE_TEMPLE },
+      { time: "09h45", name: "Accueil des invités", place: PLACE_MAIRIE },
+      { time: "10h00", name: "Cérémonie civile", place: PLACE_MAIRIE },
+      { time: "11h00", name: "Cérémonie à l'église", place: PLACE_TEMPLE },
+      { time: "12h00", name: "Réception", place: PLACE_RECEPTION },
     ],
   },
   info: {
@@ -93,50 +92,6 @@ const ceremonieFr = {
     intro: `Merci de nous répondre avant le ${weddingFr.rsvpDeadline}.`,
     askDietary: true,
     askChildren: true,
-  },
-  closing: {
-    line: "À très bientôt à Dunkerque,",
-    signature: couple,
-  },
-};
-
-const vinDhonneurFr = {
-  slug: "vin-dhonneur",
-  navLabel: "Vin d'honneur",
-  opening: {
-    kicker: `${city} · ${weddingFr.season}`,
-    title: couple,
-    subtitle: "Nous fêtons notre mariage",
-    hint: "Faites défiler",
-  },
-  card: {
-    kicker: "Avec joie",
-    names: couple,
-    intro:
-      "Nous avons le plaisir de vous convier à la célébration de notre mariage à l'église, suivie du vin d'honneur",
-    dateLong: weddingFr.dateLong,
-    place: PLACE_TEMPLE,
-    footnote: ["Célébration à l'église", "Vin d'honneur"],
-  },
-  program: {
-    kicker: "Programme",
-    title: "Le déroulé",
-    steps: [
-      { time: "16h30", name: "Célébration à l'église", place: PLACE_TEMPLE },
-      { time: "17h45", name: "Vin d'honneur", place: PLACE_TEMPLE },
-    ],
-  },
-  info: {
-    kicker: "Infos pratiques",
-    title: "Pour préparer votre venue",
-    blocks: [carpoolInfoFr, dressCodeInfoFr],
-  },
-  rsvp: {
-    kicker: "Votre réponse",
-    title: "Serez-vous des nôtres ?",
-    intro: `Merci de nous répondre avant le ${weddingFr.rsvpDeadline}.`,
-    askDietary: false,
-    askChildren: false,
   },
   closing: {
     line: "À très bientôt à Dunkerque,",
@@ -264,17 +219,16 @@ const ceremonieEs = {
     intro: "Tenemos la dicha de invitarte a celebrar nuestra boda",
     dateLong: weddingEs.dateLong,
     place: PLACE_MAIRIE,
-    footnote: ["Ceremonia", "Recepción", "Vino de honor"],
+    footnote: ["Ceremonia", "Iglesia", "Recepción"],
   },
   program: {
     kicker: "Programa",
     title: "El desarrollo del día",
     steps: [
-      { time: "10:45", name: "Bienvenida a los invitados", place: PLACE_MAIRIE },
-      { time: "11:00", name: "Ceremonia civil", place: PLACE_MAIRIE },
-      { time: "12:30", name: "Recepción", place: PLACE_RECEPTION },
-      { time: "16:30", name: "Celebración en la iglesia", place: PLACE_TEMPLE },
-      { time: "17:45", name: "Vino de honor", place: PLACE_TEMPLE },
+      { time: "09:45", name: "Bienvenida a los invitados", place: PLACE_MAIRIE },
+      { time: "10:00", name: "Ceremonia civil", place: PLACE_MAIRIE },
+      { time: "11:00", name: "Ceremonia en la iglesia", place: PLACE_TEMPLE },
+      { time: "12:00", name: "Recepción", place: PLACE_RECEPTION },
     ],
   },
   info: {
@@ -288,50 +242,6 @@ const ceremonieEs = {
     intro: `Por favor, responde antes del ${weddingEs.rsvpDeadline}.`,
     askDietary: true,
     askChildren: true,
-  },
-  closing: {
-    line: "¡Hasta muy pronto en Dunkerque!",
-    signature: couple,
-  },
-};
-
-const vinDhonneurEs = {
-  slug: "vin-dhonneur",
-  navLabel: "Vino de honor",
-  opening: {
-    kicker: `${city} · ${weddingEs.season}`,
-    title: couple,
-    subtitle: "Celebramos nuestra boda",
-    hint: "Desliza",
-  },
-  card: {
-    kicker: "¡Nos casamos!",
-    names: couple,
-    intro:
-      "Tenemos el placer de invitarte a la celebración de nuestra boda en la iglesia, seguida del vino de honor",
-    dateLong: weddingEs.dateLong,
-    place: PLACE_TEMPLE,
-    footnote: ["Celebración en la iglesia", "Vino de honor"],
-  },
-  program: {
-    kicker: "Programa",
-    title: "El desarrollo",
-    steps: [
-      { time: "16:30", name: "Celebración en la iglesia", place: PLACE_TEMPLE },
-      { time: "17:45", name: "Vino de honor", place: PLACE_TEMPLE },
-    ],
-  },
-  info: {
-    kicker: "Información práctica",
-    title: "Para organizar tu llegada",
-    blocks: [carpoolInfoEs, dressCodeInfoEs],
-  },
-  rsvp: {
-    kicker: "Tu respuesta",
-    title: "¿Nos acompañarás?",
-    intro: `Por favor, responde antes del ${weddingEs.rsvpDeadline}.`,
-    askDietary: false,
-    askChildren: false,
   },
   closing: {
     line: "¡Hasta muy pronto en Dunkerque!",
@@ -422,14 +332,14 @@ export const dict = {
     htmlLang: "fr",
     locale: "fr-FR",
     wedding: weddingFr,
-    variants: { ceremonie: ceremonieFr, vinDhonneur: vinDhonneurFr },
+    variants: { ceremonie: ceremonieFr },
     ui: uiFr,
   },
   es: {
     htmlLang: "es",
     locale: "es-ES",
     wedding: weddingEs,
-    variants: { ceremonie: ceremonieEs, vinDhonneur: vinDhonneurEs },
+    variants: { ceremonie: ceremonieEs },
     ui: uiEs,
   },
 };

@@ -12,19 +12,12 @@ export default function App() {
     <LanguageProvider>
       <BrowserRouter>
         <Routes>
-          {/* Default landing = full-program variant */}
-          <Route path="/" element={<Navigate to="/ceremonie" replace />} />
-          <Route
-            path="/ceremonie"
-            element={<InvitationPage key="ceremonie" variantKey="ceremonie" />}
-          />
-          <Route
-            path="/vin-dhonneur"
-            element={<InvitationPage key="vin-dhonneur" variantKey="vinDhonneur" />}
-          />
+          {/* Invitation unique servie à la racine. */}
+          <Route path="/" element={<InvitationPage variantKey="ceremonie" />} />
           {/* Espace privé des mariés (non lié, noindex, connexion requise). */}
           <Route path="/espace-maries" element={<AdminPage />} />
-          <Route path="*" element={<Navigate to="/ceremonie" replace />} />
+          {/* Anciens liens (/ceremonie, /vin-dhonneur…) → invitation unique. */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </LanguageProvider>

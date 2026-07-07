@@ -5,7 +5,7 @@ import { LanguageContext } from "./LanguageContext.jsx";
 // ---------------------------------------------------------------------------
 // Fournit la langue courante (FR / ES) à l'ensemble de l'invitation.
 //
-// - Aucune route dédiée : les URLs restent /ceremonie et /vin-dhonneur.
+// - Aucune route dédiée : l'invitation est servie à la racine (/).
 // - Choix initial (par priorité) :
 //     1. paramètre d'URL ?lang=es  → lien partageable qui force la langue
 //        (ex. envoyer directement l'invitation en espagnol) ;
