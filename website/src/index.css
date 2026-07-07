@@ -1015,6 +1015,29 @@ button {
   font-size: 0.75rem;
   color: var(--color-text-muted);
 }
+.admin__notice {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: rgba(201, 162, 75, 0.08);
+  color: var(--color-amber);
+  font-size: var(--fs-small);
+}
+.admin-row-actions {
+  text-align: center;
+  white-space: nowrap;
+}
+.admin-row-actions .linklike {
+  text-decoration: none;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.1rem 0.35rem;
+}
+.admin-row-actions .linklike:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 .rsvp__correction {
   max-width: 40rem;

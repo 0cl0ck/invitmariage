@@ -93,3 +93,45 @@ export function latestByEmail(rows) {
   }
   return [...map.values()];
 }
+
+/** IDs of superseded rows: everything except the latest row of each email. */
+export function duplicateIds(rows) {
+  const keep = new Set(latestByEmail(rows).map((r) => r.id));
+  return rows.filter((r) => !keep.has(r.id)).map((r) => r.id);
+}
+
+/** IDs of every row sharing the given email (used to fully remove one guest). */
+export function idsForEmail(rows, email) {
+  const key = (email || "").toLowerCase().trim();
+  return rows
+    .filter((r) => (r.email || "").toLowerCase().trim() === key)
+    .map((r) => r.id);
+}
+
+/**
+ * Delete rows by id (mariés only in Supabase mode). Returns how many rows were
+ * actually removed — 0 with no error usually means the DELETE RLS policy is
+ * missing (see supabase/schema.sql).
+ */
+export async function deleteResponses(ids) {
+  const list0 = [...new Set(ids || [])].filter(Boolean);
+  if (!list0.length) return 0;
+  if (rsvpMode === "supabase") {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .delete()
+      .in("id", list0)
+      .select("id");
+    if (error) throw error;
+    return data?.length ?? 0;
+  }
+  const list = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
+  const idSet = new Set(list0);
+  const kept = list.filter((r) => !idSet.has(r.id));
+  try {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(kept));
+  } catch {
+    /* ignore */
+  }
+  return list.length - kept.length;
+}

@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient.js";
-import { listResponses, latestByEmail, rsvpMode } from "../lib/rsvp.js";
+import {
+  listResponses,
+  latestByEmail,
+  duplicateIds,
+  idsForEmail,
+  deleteResponses,
+  rsvpMode,
+} from "../lib/rsvp.js";
 import { wedding } from "../content/variants.js";
 
 function Shell({ children }) {
@@ -37,8 +44,9 @@ function toCsv(rows) {
   return head + "\n" + body;
 }
 
-function Dashboard({ rows, onRefresh, loading, onSignOut, demo }) {
+function Dashboard({ rows, onRefresh, loading, onSignOut, demo, onCleanDuplicates, onDeleteRow, notice, busy }) {
   const latest = useMemo(() => latestByEmail(rows), [rows]);
+  const dupCount = useMemo(() => duplicateIds(rows).length, [rows]);
   const present = latest.filter((r) => r.attending === "yes");
   const absent = latest.filter((r) => r.attending === "no");
   const heads = present.reduce((s, r) => s + (Number(r.guests) || 0), 0);
@@ -75,19 +83,29 @@ function Dashboard({ rows, onRefresh, loading, onSignOut, demo }) {
           </span>
         </div>
         <div className="admin__actions">
-          <button className="btn btn--ghost" onClick={onRefresh} disabled={loading}>
+          <button className="btn btn--ghost" onClick={onRefresh} disabled={loading || busy}>
             {loading ? "…" : "Rafraîchir"}
           </button>
           <button className="btn btn--ghost" onClick={downloadCsv} disabled={!latest.length}>
             Export CSV
           </button>
+          <button
+            className="btn btn--ghost"
+            onClick={onCleanDuplicates}
+            disabled={busy || dupCount === 0}
+            title="Supprimer les anciennes versions (garde la dernière réponse par email)"
+          >
+            {`Nettoyer les doublons${dupCount ? ` (${dupCount})` : ""}`}
+          </button>
           {!demo && (
-            <button className="btn btn--ghost" onClick={onSignOut}>
+            <button className="btn btn--ghost" onClick={onSignOut} disabled={busy}>
               Se déconnecter
             </button>
           )}
         </div>
       </div>
+
+      {notice && <p className="admin__notice">{notice}</p>}
 
       {demo && (
         <p className="carpool__demo">
@@ -110,6 +128,7 @@ function Dashboard({ rows, onRefresh, loading, onSignOut, demo }) {
                 <th>Régime</th>
                 <th>Message</th>
                 <th>Variante</th>
+                <th aria-label="Actions"></th>
               </tr>
             </thead>
             <tbody>
@@ -125,6 +144,18 @@ function Dashboard({ rows, onRefresh, loading, onSignOut, demo }) {
                   <td>{r.dietary || "—"}</td>
                   <td>{r.message || "—"}</td>
                   <td>{r.variant || "—"}</td>
+                  <td className="admin-row-actions">
+                    <button
+                      type="button"
+                      className="linklike linklike--danger"
+                      onClick={() => onDeleteRow(r)}
+                      disabled={busy}
+                      title={`Supprimer la réponse de ${r.name || r.email}`}
+                      aria-label={`Supprimer la réponse de ${r.name || r.email}`}
+                    >
+                      ✕
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -143,6 +174,8 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [creds, setCreds] = useState({ email: "", password: "" });
   const [signingIn, setSigningIn] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     document.title = "Espace mariés — Hugo & Laura";
@@ -175,6 +208,55 @@ export default function AdminPage() {
     if (session) load();
   }, [session, load]);
 
+  // Shared delete runner: confirms, deletes the given ids, refreshes, and
+  // reports how many rows were actually removed (0 => likely a missing DELETE
+  // RLS policy, cf. supabase/schema.sql).
+  const runDelete = useCallback(
+    async (ids, confirmMsg, okMsg) => {
+      if (!ids.length) return;
+      if (!window.confirm(confirmMsg)) return;
+      setError("");
+      setNotice("");
+      setBusy(true);
+      try {
+        const n = await deleteResponses(ids);
+        await load();
+        setNotice(
+          n > 0
+            ? okMsg(n)
+            : "Aucune suppression effectuée — la policy DELETE n'est peut-être pas active (voir supabase/schema.sql).",
+        );
+      } catch (e) {
+        setError("Suppression impossible. " + (e?.message || ""));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [load],
+  );
+
+  const cleanDuplicates = useCallback(() => {
+    const ids = duplicateIds(rows);
+    return runDelete(
+      ids,
+      `Supprimer ${ids.length} réponse(s) en doublon ? On garde la plus récente de chaque email.`,
+      (n) => `${n} doublon(s) supprimé(s).`,
+    );
+  }, [rows, runDelete]);
+
+  const deleteRow = useCallback(
+    (row) => {
+      const ids = idsForEmail(rows, row.email);
+      return runDelete(
+        ids,
+        `Supprimer la réponse de ${row.name || row.email} ?` +
+          (ids.length > 1 ? ` (${ids.length} lignes, doublons compris)` : ""),
+        () => `Réponse de ${row.name || row.email} supprimée.`,
+      );
+    },
+    [rows, runDelete],
+  );
+
   const signIn = async (e) => {
     e.preventDefault();
     setError("");
@@ -188,7 +270,18 @@ export default function AdminPage() {
   if (rsvpMode === "local") {
     return (
       <Shell>
-        <Dashboard rows={rows} onRefresh={load} loading={loading} demo onSignOut={() => {}} />
+        {error && <p className="rsvp__error">{error}</p>}
+        <Dashboard
+          rows={rows}
+          onRefresh={load}
+          loading={loading}
+          demo
+          onSignOut={() => {}}
+          onCleanDuplicates={cleanDuplicates}
+          onDeleteRow={deleteRow}
+          notice={notice}
+          busy={busy}
+        />
       </Shell>
     );
   }
@@ -243,6 +336,10 @@ export default function AdminPage() {
         onRefresh={load}
         loading={loading}
         onSignOut={() => supabase.auth.signOut()}
+        onCleanDuplicates={cleanDuplicates}
+        onDeleteRow={deleteRow}
+        notice={notice}
+        busy={busy}
       />
     </Shell>
   );

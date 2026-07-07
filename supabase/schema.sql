@@ -103,7 +103,16 @@ create policy "rsvp read auth"
   for select
   using (auth.role() = 'authenticated');
 
--- Pas de policy UPDATE/DELETE : aucune modification/suppression via le site.
+-- Suppression réservée aux mariés connectés (bouton « Nettoyer les doublons » et
+-- suppression d'une réponse depuis /espace-maries). Les invités (anon) ne peuvent
+-- pas supprimer.
+drop policy if exists "rsvp delete auth" on public.rsvp_responses;
+create policy "rsvp delete auth"
+  on public.rsvp_responses
+  for delete
+  using (auth.role() = 'authenticated');
+
+-- Pas de policy UPDATE : aucune modification en place via le site.
 
 -- ---------------------------------------------------------------------------
 -- Compte mariés pour le dashboard :
