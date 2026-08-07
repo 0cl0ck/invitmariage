@@ -34,7 +34,7 @@ const weddingFr = {
   contactEmails,
   season: "Automne 2026",
   dateLong: "Samedi 10 octobre 2026",
-  rsvpDeadline: "10 août 2026",
+  rsvpDeadline: "15 septembre 2026",
 };
 
 const carpoolInfoFr = {
@@ -184,7 +184,7 @@ const weddingEs = {
   contactEmails,
   season: "Otoño 2026",
   dateLong: "Sábado 10 de octubre de 2026",
-  rsvpDeadline: "10 de agosto de 2026",
+  rsvpDeadline: "15 de septiembre de 2026",
 };
 
 const carpoolInfoEs = {
