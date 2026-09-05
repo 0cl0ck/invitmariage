@@ -85,6 +85,12 @@ Modération : les mariés suppriment une annonce depuis le dashboard Supabase
 - **Dashboard mariés** : page privée [`/espace-maries`](src/components/AdminPage.jsx)
   (non liée, hors expérience cinématique). Récap présents / absents / personnes
   attendues, tableau, **export CSV**.
+- **Ajout à la main** : bouton « + Ajouter une réponse » sur `/espace-maries`
+  pour saisir la réponse d'un invité qui ne passe pas par le site (email
+  facultatif). Ces lignes sont marquées `source = 'manual'` (tag « saisie
+  mariés ») et se corrigent avec le bouton ✎ (nouvelle ligne + suppression de
+  l'ancienne). Base créée avant cette version : relancer
+  [`../supabase/schema.sql`](../supabase/schema.sql) (§5, migration idempotente).
 - **Sécurité** : la lecture des réponses est réservée aux mariés **connectés**
   (Supabase Auth) ; les invités (clé anon) ne peuvent qu'insérer. Créer le compte
   des mariés : Supabase → Authentication → Users → Add user (email + mot de passe),
@@ -92,11 +98,35 @@ Modération : les mariés suppriment une annonce depuis le dashboard Supabase
 - **Sans Supabase configuré** : RSVP et dashboard tournent en **mode démo local**
   (`localStorage`, par appareil), sans authentification.
 
+## Checklist des mariés (Supabase)
+
+Page privée [`/espace-maries/checklist`](src/components/ChecklistPage.jsx)
+(même connexion que les réponses) : une checklist de mariage **modifiable à
+souhait** et partagée entre les mariés en **temps réel**.
+
+- Tâches par catégorie : cocher, ajouter (formulaire complet ou ajout rapide
+  en bas de chaque catégorie), modifier (titre, catégorie, échéance, qui s'en
+  occupe, notes), supprimer, réordonner (tâches et catégories), renommer ou
+  supprimer une catégorie.
+- Avancement global et par catégorie, retards, échéances de la semaine, compte
+  à rebours J-x (date du mariage : `wedding.dateIso` dans
+  [`src/content/variants.js`](src/content/variants.js)).
+- Filtres : à faire / faites, par personne, recherche.
+- **Liste type** : bouton « Liste type » (ou « Charger la liste type » quand
+  la page est vide) ajoute les tâches manquantes de
+  [`src/content/checklist.js`](src/content/checklist.js), échéances calculées
+  à partir de la date du mariage. Les tâches existantes ne sont jamais touchées.
+- Données : table `checklist_items` (lecture / écriture réservées aux mariés
+  connectés, realtime). Couche d'accès : [`src/lib/checklist.js`](src/lib/checklist.js).
+  **Sans Supabase** : mode démo local (`localStorage`, par appareil).
+
 ## Mise en route Supabase (résumé)
 
 1. Créer un projet [supabase.com](https://supabase.com).
 2. SQL Editor → exécuter [`../supabase/schema.sql`](../supabase/schema.sql)
-   (tables `carpool_entries` + `rsvp_responses`, RLS, realtime).
+   (tables `carpool_entries` + `rsvp_responses` + `checklist_items`, RLS,
+   realtime). Le script est idempotent : le relancer sur un projet existant
+   ajoute ce qui manque (ex. la checklist, l'email facultatif des réponses).
 3. Authentication → Users → Add user (email + mot de passe des mariés).
 4. `cp .env.example .env.local` → renseigner `VITE_SUPABASE_URL` et
    `VITE_SUPABASE_ANON_KEY` (Project Settings → API). Sur Vercel : mêmes variables

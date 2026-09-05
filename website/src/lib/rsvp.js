@@ -14,7 +14,7 @@ function sanitize(raw) {
   return {
     variant: raw.variant || null,
     name: String(raw.name || "").trim().slice(0, 80),
-    email: String(raw.email || "").trim().slice(0, 120),
+    email: String(raw.email || "").trim().slice(0, 120) || null,
     attending,
     guests: attending === "no" ? 0 : Math.max(0, Math.min(20, parseInt(raw.guests, 10) || 1)),
     children: Math.max(0, Math.min(12, parseInt(raw.children, 10) || 0)),
@@ -66,6 +66,33 @@ export async function submitResponse(raw) {
   return saved;
 }
 
+/* ------------------------- manual entry (mariés) ------------------------- */
+
+/**
+ * Add (from /espace-maries) the answer of a guest who cannot use the site.
+ * Email is optional; the row is flagged `source = 'manual'` (requires the
+ * migration in supabase/schema.sql §5). Never touches this device's own RSVP.
+ */
+export async function addManualResponse(raw) {
+  const entry = { ...sanitize(raw), source: "manual" };
+  if (!entry.name) throw new Error("missing-fields");
+  if (entry.email && entry.email.length < 3) throw new Error("bad-email");
+  if (rsvpMode === "supabase") {
+    const { error } = await supabase.from(TABLE).insert(entry);
+    if (error) throw error;
+    return entry;
+  }
+  const list = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
+  const saved = { ...entry, id: `local-${Date.now()}`, created_at: new Date().toISOString() };
+  list.push(saved);
+  try {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore */
+  }
+  return saved;
+}
+
 /* ------------------------------ admin side ------------------------------- */
 
 /** All rows (requires an authenticated session in Supabase mode). */
@@ -83,11 +110,17 @@ export async function listResponses() {
     .reverse();
 }
 
+/** Grouping key: the email when there is one, else the row itself (no email = no correction chain). */
+export function rowKey(r) {
+  const email = (r.email || "").toLowerCase().trim();
+  return email ? `email:${email}` : `id:${r.id}`;
+}
+
 /** Keep only the most recent row per email (a correction supersedes earlier ones). */
 export function latestByEmail(rows) {
   const map = new Map();
   for (const r of rows) {
-    const key = (r.email || "").toLowerCase().trim();
+    const key = rowKey(r);
     const prev = map.get(key);
     if (!prev || new Date(r.created_at) > new Date(prev.created_at)) map.set(key, r);
   }
@@ -100,12 +133,10 @@ export function duplicateIds(rows) {
   return rows.filter((r) => !keep.has(r.id)).map((r) => r.id);
 }
 
-/** IDs of every row sharing the given email (used to fully remove one guest). */
-export function idsForEmail(rows, email) {
-  const key = (email || "").toLowerCase().trim();
-  return rows
-    .filter((r) => (r.email || "").toLowerCase().trim() === key)
-    .map((r) => r.id);
+/** IDs of every row belonging to the same guest as `row` (used to fully remove or replace one guest). */
+export function idsForRow(rows, row) {
+  const key = rowKey(row);
+  return rows.filter((r) => rowKey(r) === key).map((r) => r.id);
 }
 
 /**

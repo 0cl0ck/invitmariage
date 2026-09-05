@@ -18,6 +18,11 @@ const couple = "Hugo & Laura";
 const monogram = "H ✦ L";
 const city = "Dunkerque";
 const contactEmails = ["hugodewas@gmail.com", "laura.arenas.n@gmail.com"];
+// Dates au format ISO (invariantes) : base de calcul pour l'espace mariés
+// (compte à rebours, échéances de la checklist). Garder en phase avec
+// `dateLong` / `rsvpDeadline` ci-dessous.
+const dateIso = "2026-10-10";
+const rsvpDeadlineIso = "2026-09-15";
 
 // Lieux (noms propres — non traduits, cf. remarque en tête de fichier).
 const PLACE_MAIRIE = "Hôtel de Ville de Dunkerque";
@@ -32,6 +37,8 @@ const weddingFr = {
   monogram,
   city,
   contactEmails,
+  dateIso,
+  rsvpDeadlineIso,
   season: "Automne 2026",
   dateLong: "Samedi 10 octobre 2026",
   rsvpDeadline: "15 septembre 2026",
@@ -182,6 +189,8 @@ const weddingEs = {
   monogram,
   city,
   contactEmails,
+  dateIso,
+  rsvpDeadlineIso,
   season: "Otoño 2026",
   dateLong: "Sábado 10 de octubre de 2026",
   rsvpDeadline: "15 de septiembre de 2026",
