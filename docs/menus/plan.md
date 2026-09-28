@@ -40,5 +40,15 @@ Codex + Grok : NE PAS SHIP sur la v1. Corrigé : envoi réservé aux emails des 
 Choix : date limite affichée mais non bloquante (sinon « Rouvrir » est inutilisable après le 27/09). Non traité : reprise automatique d'un email de confirmation échoué.
 Gemini : bloqué plus de 25 min sans sortie, arrêté.
 
+## État (28/09)
+- Index 7b appliqué et inscriptions Supabase désactivées (Hugo, confirmé le 28/09).
+- Date limite affichée passée au **dimanche 4 octobre** (le 27/09 était échu).
+- Commit local `3a20a5d` sur `feature/choix-menus`, non poussé.
+- **Déployé en prod** le 28/09 via `CONFIRM_SHIP=1 vercel deploy --prod --yes` **depuis la racine du repo** (Root Directory Vercel = `website`, la commande échoue si on la lance depuis `website/`). `.vercel/` copié à la racine et ignoré.
+- Vérifié en ligne : `/api/menu` répond en JSON (404 `not-found` sur un jeton inconnu, donc clé service Supabase OK), le bundle contient `/menu/:token` et `/espace-maries/menus`.
+- Non encore testé : envoi Resend réel et email de confirmation (test avec l'adresse d'Hugo à faire depuis l'espace mariés).
+
 ## Prochaine action
-Hugo : désactiver les inscriptions Supabase, appliquer l'index 7b, déployer en prod (le classificateur Auto Mode refuse `vercel deploy --prod`), tester avec son adresse. Puis commit, PR vers main.
+1. Hugo : test de bout en bout avec son adresse (RSVP manuel avec son email, « Créer les liens manquants », bouton « Envoyer » de la ligne seulement, choix, confirmation, email reçu), puis suppression du foyer test.
+2. Push de `feature/choix-menus`, PR vers `main` (accord d'Hugo).
+3. Envoi réel aux foyers présents.
