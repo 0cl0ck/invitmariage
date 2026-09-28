@@ -6,7 +6,7 @@
 --   mariés depuis /espace-maries/menus à partir des réponses RSVP « oui ».
 -- menu_choices    : une ligne par personne du foyer.
 -- confirm_menu()  : enregistre et verrouille les choix d'un foyer, en une seule
---   transaction, avec le quota de 20 parts par parfum de gâteau.
+--   transaction.
 --
 -- Les invités n'ont AUCUN accès direct à ces tables : ils passent par les
 -- fonctions serveur Vercel (/api/menu), qui utilisent la clé service_role.
@@ -42,7 +42,6 @@ create table if not exists public.menu_choices (
   starter      text check (starter in ('veau', 'gaspacho')),
   main         text not null check (main in ('carrelet', 'agneau', 'burrata', 'poulet', 'poisson')),
   cheese       boolean not null default false,
-  cake         text not null check (cake in ('chocolat', 'fruits_rouges', 'exotique')),
   unique (household_id, position),
   -- adults: starter + adult main; children: kids' menu, no starter
   check (
@@ -75,9 +74,9 @@ create policy "menu choices auth"
 
 -- ---------------------------------------------------------------------------
 -- confirm_menu(token, choices) : appelée par /api/menu (service_role).
--- choices = [{ "person_name", "kind", "starter", "main", "cheese", "cake" }, ...]
--- Erreurs levées (message) : not-found, already-confirmed, bad-count,
--- cake-full:<parfum>. Les contraintes CHECK rejettent tout choix invalide.
+-- choices = [{ "person_name", "kind", "starter", "main", "cheese" }, ...]
+-- Erreurs levées (message) : not-found, already-confirmed, bad-count.
+-- Les contraintes CHECK rejettent tout choix invalide.
 -- ---------------------------------------------------------------------------
 create or replace function public.confirm_menu(p_token text, p_choices jsonb)
 returns void
@@ -86,11 +85,7 @@ security definer
 set search_path = public
 as $confirm$
 declare
-  h        public.menu_households%rowtype;
-  cake_cap constant int := 20;
-  flavor   text;
-  taken    int;
-  wanted   int;
+  h public.menu_households%rowtype;
 begin
   select * into h from public.menu_households where token = p_token for update;
   if not found then
@@ -105,33 +100,16 @@ begin
     raise exception 'bad-count';
   end if;
 
-  -- Serialize every confirmation so two households cannot take the last part.
-  perform pg_advisory_xact_lock(hashtext('menu_cakes'));
-
-  foreach flavor in array array['chocolat', 'fruits_rouges', 'exotique'] loop
-    select count(*) into taken
-      from public.menu_choices mc
-      join public.menu_households mh on mh.id = mc.household_id
-     where mc.cake = flavor and mh.confirmed_at is not null;
-    select count(*) into wanted
-      from jsonb_array_elements(p_choices) c
-     where c->>'cake' = flavor;
-    if taken + wanted > cake_cap then
-      raise exception 'cake-full:%', flavor;
-    end if;
-  end loop;
-
   delete from public.menu_choices where household_id = h.id;
 
-  insert into public.menu_choices (household_id, position, person_name, kind, starter, main, cheese, cake)
+  insert into public.menu_choices (household_id, position, person_name, kind, starter, main, cheese)
   select h.id,
          (c.ord - 1)::int,
          left(trim(c.val->>'person_name'), 60),
          c.val->>'kind',
          nullif(c.val->>'starter', ''),
          c.val->>'main',
-         coalesce((c.val->>'cheese')::boolean, false),
-         c.val->>'cake'
+         coalesce((c.val->>'cheese')::boolean, false)
     from jsonb_array_elements(p_choices) with ordinality as c(val, ord);
 
   update public.menu_households set confirmed_at = now() where id = h.id;
@@ -141,23 +119,6 @@ end $confirm$;
 revoke all on function public.confirm_menu(text, jsonb) from public, anon, authenticated;
 grant execute on function public.confirm_menu(text, jsonb) to service_role;
 
--- Parts de gâteau déjà réservées (confirmées), pour afficher « complet ».
-create or replace function public.menu_cake_counts()
-returns table (cake text, taken int)
-language sql
-security definer
-set search_path = public
-as $counts$
-  select mc.cake, count(*)::int
-    from public.menu_choices mc
-    join public.menu_households mh on mh.id = mc.household_id
-   where mh.confirmed_at is not null
-   group by mc.cake;
-$counts$;
-
-revoke all on function public.menu_cake_counts() from public, anon;
-grant execute on function public.menu_cake_counts() to service_role, authenticated;
-
 -- ---------------------------------------------------------------------------
 -- 7b) Correctif (24/09) : un seul lien par réponse RSVP, même si les deux
 -- mariés cliquent « Créer les liens manquants » en même temps.
@@ -165,3 +126,12 @@ grant execute on function public.menu_cake_counts() to service_role, authenticat
 create unique index if not exists menu_households_rsvp_uniq
   on public.menu_households (rsvp_id)
   where rsvp_id is not null;
+
+-- ---------------------------------------------------------------------------
+-- 8) Migration (28/09) : plus de choix de gâteau, il se fera sur place.
+-- À coller dans l'éditeur SQL Supabase (idempotent) si la base a été créée
+-- avec la version du 24/09. Supprime la colonne, la fonction de comptage et
+-- réinstalle confirm_menu (définition ci-dessus, sans quota).
+-- ---------------------------------------------------------------------------
+drop function if exists public.menu_cake_counts();
+alter table public.menu_choices drop column if exists cake;

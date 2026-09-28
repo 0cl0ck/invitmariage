@@ -3,7 +3,6 @@
 // Mariés read/write the tables directly (RLS: authenticated only) and send the
 // request emails through /api/menu-send. Without Supabase: local demo store.
 import { supabase, isSupabaseConfigured } from "./supabaseClient.js";
-import { CAKES, CAKE_CAP } from "../content/menu.js";
 
 export const menuMode = isSupabaseConfigured ? "supabase" : "local";
 
@@ -35,12 +34,6 @@ function demoSave(db) {
     /* ignore */
   }
 }
-function demoCakes(db) {
-  const counts = Object.fromEntries(CAKES.map((c) => [c, 0]));
-  const confirmed = new Set(db.households.filter((h) => h.confirmed_at).map((h) => h.id));
-  for (const c of db.choices) if (confirmed.has(c.household_id)) counts[c.cake] += 1;
-  return counts;
-}
 function newToken() {
   return crypto.randomUUID().replace(/-/g, "");
 }
@@ -61,7 +54,7 @@ async function api(path, options) {
   return body;
 }
 
-/** { household, choices, cakes, cakeCap } for a guest link. */
+/** { household, choices } for a guest link. */
 export async function fetchMenu(token) {
   if (menuMode === "local") {
     const db = demoLoad();
@@ -71,24 +64,18 @@ export async function fetchMenu(token) {
     return {
       household: { name: h.name, email: h.email, lang: h.lang, adults: h.adults, children: h.children, confirmedAt: h.confirmed_at, confirmationSent: Boolean(h.confirmed_at && h.email) },
       choices: db.choices.filter((c) => c.household_id === h.id),
-      cakes: demoCakes(db),
-      cakeCap: CAKE_CAP,
     };
   }
   return api(`/api/menu?token=${encodeURIComponent(token)}`);
 }
 
-/** Final confirmation. Throws MenuError(code): cake-full, already-confirmed, invalid… */
+/** Final confirmation. Throws MenuError(code): already-confirmed, invalid… */
 export async function confirmMenu(token, choices) {
   if (menuMode === "local") {
     const db = demoLoad();
     const h = db.households.find((x) => x.token === token);
     if (!h) throw new MenuError("not-found");
     if (h.confirmed_at) throw new MenuError("already-confirmed");
-    const cakes = demoCakes(db);
-    for (const c of choices) cakes[c.cake] += 1;
-    const full = CAKES.find((c) => cakes[c] > CAKE_CAP);
-    if (full) throw new MenuError("cake-full", { cake: full, cakes: demoCakes(db) });
     db.choices.push(...choices.map((c, i) => ({ ...c, starter: c.starter || null, household_id: h.id, position: i })));
     h.confirmed_at = new Date().toISOString();
     demoSave(db);
@@ -168,7 +155,7 @@ export async function reopenHousehold(id) {
     return;
   }
   // Unlock first: an unconfirmed household's leftover choices count for nothing
-  // (cake quota only counts confirmed ones) and confirm_menu() replaces them.
+  // (totals only count confirmed ones) and confirm_menu() replaces them.
   const { error: e1 } = await supabase
     .from("menu_households")
     .update({ confirmed_at: null, confirmation_sent_at: null })

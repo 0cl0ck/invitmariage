@@ -1,32 +1,30 @@
 # Choix des menus : plan (24/09/2026)
 
 ## Objectif
-Chaque foyer qui a répondu « oui » choisit, par personne, entrée, plat, fromage (oui/non) et parfum de gâteau.
+Chaque foyer qui a répondu « oui » choisit, par personne, entrée, plat et fromage (oui/non). Le gâteau se choisit sur place (décision du 28/09, plus de champ ni de quota).
 Le choix est **définitif** une fois confirmé, et un email de confirmation part avec le récap. Les mariés récupèrent tout dans `/espace-maries`.
 
 ## Décisions (Hugo, 24/09)
-- Gâteaux : **un parfum par gâteau**, quota de **20 parts par parfum** (trois chocolats, fruits rouges, exotique). Un parfum plein s'affiche « complet ».
+- Gâteaux : ~~un parfum par gâteau, quota de 20 parts~~ **abandonné le 28/09** : le choix du gâteau se fait sur place.
 - Emails : **Resend** sur `hugolaura.fr` (DNS chez OVH, 3 enregistrements à poser par Hugo). Réponses redirigées vers le Gmail d'Hugo.
 - Date limite : **dimanche 27 septembre 2026**.
 - Modification après confirmation : **mariés uniquement**, depuis l'espace mariés.
 
 ## Parcours
 1. `/espace-maries/menus` : liste des foyers présents, statut (à envoyer, envoyé, choisi), bouton « Envoyer la demande » (foyers avec email) ou « Copier le lien » (foyers sans email, à passer par WhatsApp/SMS). Export CSV pour le restaurant, avec les totaux par plat.
-2. Lien personnel `/menu/<jeton>` : une ligne par personne. Adultes : prénom, entrée, plat (carrelet, agneau, végétarien), fromage, parfum. Enfants : poulet ou poisson, parfum.
+2. Lien personnel `/menu/<jeton>` : une ligne par personne. Adultes : prénom, entrée, plat (carrelet, agneau, végétarien), fromage. Enfants : poulet ou poisson.
 3. Récap, puis « Je confirme » : verrouillage, email de confirmation, le lien n'affiche plus que le récap.
 4. FR + ES comme le reste du site.
 
 ## Technique
 - Supabase : colonne `menu_token` (unique) sur le foyer, table `menu_choices` (une ligne par personne), lecture/écriture anon interdites (RLS).
 - Fonctions serveur Vercel `website/api/` avec la clé service Supabase : lire le foyer par jeton, enregistrer + verrouiller, envoyer les emails (Resend).
-- Quota gâteaux vérifié côté serveur au moment de la confirmation.
 - `vercel.json` : exclure `/api` de la réécriture SPA.
 
 ## Variables d'environnement (Vercel, jamais dans git)
 `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO`, `SITE_URL`.
 
 ## Points ouverts
-- 60 parts de gâteau pour 60 adultes + enfants : à caler avec le restaurant.
 - Le RSVP est par foyer : le nombre de personnes vient de `guests` + `children`.
 
 ## État (24/09 soir)
@@ -47,6 +45,11 @@ Gemini : bloqué plus de 25 min sans sortie, arrêté.
 - **Déployé en prod** le 28/09 via `CONFIRM_SHIP=1 vercel deploy --prod --yes` **depuis la racine du repo** (Root Directory Vercel = `website`, la commande échoue si on la lance depuis `website/`). `.vercel/` copié à la racine et ignoré.
 - Vérifié en ligne : `/api/menu` répond en JSON (404 `not-found` sur un jeton inconnu, donc clé service Supabase OK), le bundle contient `/menu/:token` et `/espace-maries/menus`.
 - Non encore testé : envoi Resend réel et email de confirmation (test avec l'adresse d'Hugo à faire depuis l'espace mariés).
+
+## Retrait du gâteau (28/09)
+- Décision d'Hugo : le gâteau se choisit sur place. Champ, quota, comptage et colonne retirés partout (SQL, /api, emails, page invité, espace mariés, CSV, totaux).
+- Migration **`supabase/2026-09-28-sans-gateau.sql`** à coller dans Supabase **avant** le déploiement (la prod du 28/09 matin insère encore `cake`, le nouveau code ne le fait plus : les deux étapes doivent s'enchaîner, aucun lien invité n'ayant encore été envoyé). Testée sur PGlite : schéma du 24/09 + migration, confirmation OK, rejouable.
+- `supabase/menus.sql` reste le schéma de référence (à jour, section 8 = même migration).
 
 ## Prochaine action
 1. Hugo : test de bout en bout avec son adresse (RSVP manuel avec son email, « Créer les liens manquants », bouton « Envoyer » de la ligne seulement, choix, confirmation, email reçu), puis suppression du foyer test.

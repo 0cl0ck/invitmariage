@@ -18,7 +18,7 @@ const copy = {
     hello: (name) => `Bonjour ${name},`,
     requestBody: [
       "Nous avons hâte de vous retrouver le samedi 10 octobre !",
-      "Pour le repas, le restaurant nous demande le choix de chacun : entrée, plat, fromage et parfum de gâteau. Cela prend deux minutes.",
+      "Pour le repas, le restaurant nous demande le choix de chacun : entrée, plat et fromage. Cela prend deux minutes.",
     ],
     button: "Choisir notre menu",
     deadline: (d) => `Merci de répondre avant le ${d}. Une fois votre choix confirmé, vous recevrez un récapitulatif par email.`,
@@ -33,7 +33,7 @@ const copy = {
     hello: (name) => `Hola ${name}:`,
     requestBody: [
       "¡Tenemos muchas ganas de verlos el sábado 10 de octubre!",
-      "Para la comida, el restaurante nos pide la elección de cada uno: entrada, plato fuerte, quesos y sabor de torta. Toma dos minutos.",
+      "Para la comida, el restaurante nos pide la elección de cada uno: entrada, plato fuerte y quesos. Toma dos minutos.",
     ],
     button: "Elegir nuestro menú",
     deadline: (d) => `Por favor respondan antes del ${d}. Una vez confirmada su elección, recibirán un resumen por correo.`,
@@ -59,8 +59,8 @@ export function recapLines(choices, lang) {
   return choices.map((c) => {
     const parts =
       c.kind === "adult"
-        ? [dishes[c.starter]?.name, dishes[c.main]?.name, ui.cheeseLine(c.cheese), ui.cakeLine(dishes[c.cake]?.name)]
-        : [dishes[c.main]?.name, ui.cakeLine(dishes[c.cake]?.name)];
+        ? [dishes[c.starter]?.name, dishes[c.main]?.name, ui.cheeseLine(c.cheese)]
+        : [dishes[c.main]?.name];
     return { who: c.person_name, parts };
   });
 }

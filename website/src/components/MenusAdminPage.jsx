@@ -14,7 +14,7 @@ import {
   sendRequests,
   menuUrl,
 } from "../lib/menus.js";
-import { menuDict, STARTERS, ADULT_MAINS, CHILD_MAINS, CAKES, CAKE_CAP } from "../content/menu.js";
+import { menuDict, STARTERS, ADULT_MAINS, CHILD_MAINS } from "../content/menu.js";
 import { wedding } from "../content/variants.js";
 
 const { dishes } = menuDict.fr;
@@ -49,7 +49,7 @@ function toCsv(households) {
     const text = String(v ?? "");
     return `"${(/^[=+\-@\t\r]/.test(text) ? "'" + text : text).replace(/"/g, '""')}"`;
   };
-  const head = ["Foyer", "Personne", "Type", "Entrée", "Plat", "Fromage", "Gâteau", "Email", "Confirmé le"];
+  const head = ["Foyer", "Personne", "Type", "Entrée", "Plat", "Fromage", "Email", "Confirmé le"];
   const lines = [];
   for (const h of households) {
     if (!h.confirmed_at) {
@@ -64,7 +64,6 @@ function toCsv(households) {
         c.starter ? dishes[c.starter].name : "",
         dishes[c.main].name,
         c.kind === "adult" ? (c.cheese ? "Oui" : "Non") : "",
-        dishes[c.cake].name,
         h.email,
         fmtDate(h.confirmed_at),
       ]);
@@ -134,14 +133,13 @@ function EditForm({ household, onSave, onCancel }) {
 
 function Totals({ households }) {
   const t = useMemo(() => {
-    const count = Object.fromEntries([...STARTERS, ...ADULT_MAINS, ...CHILD_MAINS, ...CAKES].map((k) => [k, 0]));
+    const count = Object.fromEntries([...STARTERS, ...ADULT_MAINS, ...CHILD_MAINS].map((k) => [k, 0]));
     let cheese = 0;
     for (const h of households) {
       if (!h.confirmed_at) continue;
       for (const c of h.choices) {
         if (c.starter) count[c.starter] += 1;
         count[c.main] += 1;
-        count[c.cake] += 1;
         if (c.cheese) cheese += 1;
       }
     }
@@ -171,7 +169,6 @@ function Totals({ households }) {
           <strong>{t.cheese}</strong> assiettes
         </p>
       </div>
-      {group("Gâteaux", CAKES, () => ` / ${CAKE_CAP}`)}
     </div>
   );
 }
@@ -370,7 +367,7 @@ function MenusDashboard({ demo, onSignOut }) {
                     {h.choices.map((c) => (
                       <span key={c.id || c.position}>
                         <strong>{c.person_name}</strong> :{" "}
-                        {[c.starter && dishes[c.starter].name, dishes[c.main].name, c.kind === "adult" && (c.cheese ? "fromage" : "sans fromage"), dishes[c.cake].name]
+                        {[c.starter && dishes[c.starter].name, dishes[c.main].name, c.kind === "adult" && (c.cheese ? "fromage" : "sans fromage")]
                           .filter(Boolean)
                           .join(" · ")}
                       </span>

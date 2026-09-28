@@ -1,9 +1,8 @@
 // Guest menu endpoint (/menu/<token> page).
-//   GET  /api/menu?token=…            → household, cake counts, confirmed choices
+//   GET  /api/menu?token=…            → household, confirmed choices
 //   POST /api/menu { token, choices } → confirm (final) + confirmation email
 import { adminClient, readJson } from "./_lib/server.js";
 import { confirmationEmail, sendEmail } from "./_lib/mail.js";
-import { CAKES, CAKE_CAP } from "../src/content/menu.js";
 
 const TOKEN_RE = /^[0-9a-f]{32}$/;
 
@@ -20,19 +19,11 @@ async function loadHousehold(db, token) {
 async function loadChoices(db, householdId) {
   const { data, error } = await db
     .from("menu_choices")
-    .select("person_name, kind, starter, main, cheese, cake")
+    .select("person_name, kind, starter, main, cheese")
     .eq("household_id", householdId)
     .order("position");
   if (error) throw error;
   return data || [];
-}
-
-async function cakeCounts(db) {
-  const { data, error } = await db.rpc("menu_cake_counts");
-  if (error) throw error;
-  const counts = Object.fromEntries(CAKES.map((c) => [c, 0]));
-  for (const row of data || []) counts[row.cake] = row.taken;
-  return counts;
 }
 
 // The link may be forwarded (WhatsApp…): never return the full address.
@@ -63,7 +54,6 @@ function sanitizeChoices(raw) {
     starter: c?.kind === "child" ? "" : String(c?.starter || ""),
     main: String(c?.main || ""),
     cheese: c?.kind === "child" ? false : Boolean(c?.cheese),
-    cake: String(c?.cake || ""),
   }));
 }
 
@@ -78,12 +68,7 @@ export default async function handler(req, res) {
       const h = await loadHousehold(db, token);
       if (!h) return res.status(404).json({ error: "not-found" });
       const choices = h.confirmed_at ? await loadChoices(db, h.id) : [];
-      return res.status(200).json({
-        household: publicHousehold(h),
-        choices,
-        cakes: await cakeCounts(db),
-        cakeCap: CAKE_CAP,
-      });
+      return res.status(200).json({ household: publicHousehold(h), choices });
     }
 
     if (req.method === "POST") {
@@ -100,9 +85,6 @@ export default async function handler(req, res) {
         const msg = error.message || "";
         if (msg === "not-found") return res.status(404).json({ error: "not-found" });
         if (msg === "already-confirmed") return res.status(409).json({ error: "already-confirmed" });
-        if (msg.startsWith("cake-full:")) {
-          return res.status(409).json({ error: "cake-full", cake: msg.slice(10), cakes: await cakeCounts(db) });
-        }
         if (msg === "bad-count" || error.code === "23514") return res.status(400).json({ error: "invalid" });
         throw error;
       }

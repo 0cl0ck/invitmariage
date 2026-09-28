@@ -7,13 +7,11 @@
 
 // Date limite (4 octobre) : affichée aux invités, pas bloquante, pour que
 // les retardataires et les menus rouverts par les mariés restent possibles.
-// Un gâteau par parfum, 20 parts chacun (cf. supabase/menus.sql).
-export const CAKE_CAP = 20;
+// Le gâteau se choisit sur place : pas de champ dans le formulaire.
 
 export const STARTERS = ["veau", "gaspacho"];
 export const ADULT_MAINS = ["carrelet", "agneau", "burrata"];
 export const CHILD_MAINS = ["poulet", "poisson"];
-export const CAKES = ["chocolat", "fruits_rouges", "exotique"];
 
 export const menuDict = {
   fr: {
@@ -41,9 +39,6 @@ export const menuDict = {
       },
       poulet: { name: "Filet de poulet et frites maison", desc: "Légumes du moment" },
       poisson: { name: "Poisson selon arrivage", desc: "Risotto et légumes du moment" },
-      chocolat: { name: "Trois chocolats", desc: "" },
-      fruits_rouges: { name: "Fruits rouges", desc: "" },
-      exotique: { name: "Exotique", desc: "" },
     },
     ui: {
       docTitle: "Votre menu",
@@ -62,9 +57,6 @@ export const menuDict = {
       cheese: "Assiette de fromages régionaux",
       cheeseYes: "Oui, avec plaisir",
       cheeseNo: "Non merci",
-      cake: "Gâteau",
-      cakeFull: "Complet",
-      cakeLeft: (n) => (n === 1 ? "Dernière part" : `${n} parts restantes`),
       review: "Vérifier mes choix",
       back: "Modifier",
       confirm: "Je confirme",
@@ -72,7 +64,6 @@ export const menuDict = {
       reviewTitle: "Récapitulatif",
       reviewNote: "Tout est bon ? Après confirmation, vous ne pourrez plus changer.",
       errorIncomplete: "Il manque un choix ou un prénom (voir les champs en rouge).",
-      errorCakeFull: (cake) => `Le gâteau « ${cake} » vient d'être complet. Merci d'en choisir un autre.`,
       errorGeneric: "L'envoi n'a pas fonctionné. Réessayez dans un instant, ou écrivez-nous.",
       doneKicker: "Merci !",
       doneTitle: "Votre menu est confirmé",
@@ -85,7 +76,6 @@ export const menuDict = {
       loading: "Chargement…",
       or: " ou ",
       cheeseLine: (yes) => (yes ? "Fromages : oui" : "Fromages : non"),
-      cakeLine: (name) => `Gâteau : ${name}`,
     },
   },
   es: {
@@ -113,9 +103,6 @@ export const menuDict = {
       },
       poulet: { name: "Filete de pollo con papas fritas caseras", desc: "Verduras de temporada" },
       poisson: { name: "Pescado del día", desc: "Risotto y verduras de temporada" },
-      chocolat: { name: "Tres chocolates", desc: "" },
-      fruits_rouges: { name: "Frutos rojos", desc: "" },
-      exotique: { name: "Exótico", desc: "" },
     },
     ui: {
       docTitle: "Su menú",
@@ -134,9 +121,6 @@ export const menuDict = {
       cheese: "Tabla de quesos regionales",
       cheeseYes: "Sí, con gusto",
       cheeseNo: "No, gracias",
-      cake: "Torta",
-      cakeFull: "Agotada",
-      cakeLeft: (n) => (n === 1 ? "Última porción" : `Quedan ${n} porciones`),
       review: "Revisar mi elección",
       back: "Modificar",
       confirm: "Confirmo",
@@ -144,7 +128,6 @@ export const menuDict = {
       reviewTitle: "Resumen",
       reviewNote: "¿Todo bien? Después de confirmar ya no podrán cambiar.",
       errorIncomplete: "Falta una elección o un nombre (ver los campos en rojo).",
-      errorCakeFull: (cake) => `La torta « ${cake} » acaba de agotarse. Por favor elijan otra.`,
       errorGeneric: "El envío no funcionó. Intenten de nuevo en un momento, o escríbannos.",
       doneKicker: "¡Gracias!",
       doneTitle: "Su menú está confirmado",
@@ -157,7 +140,6 @@ export const menuDict = {
       loading: "Cargando…",
       or: " o ",
       cheeseLine: (yes) => (yes ? "Quesos: sí" : "Quesos: no"),
-      cakeLine: (name) => `Torta: ${name}`,
     },
   },
 };

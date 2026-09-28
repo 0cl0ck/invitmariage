@@ -1,19 +1,19 @@
 // Guest menu page (/menu/:token): one block per person, review, then a final
 // confirmation. Once confirmed the page only shows the recap.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useDict, useLang } from "../i18n/LanguageContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import { fetchMenu, confirmMenu } from "../lib/menus.js";
-import { menuDict, STARTERS, ADULT_MAINS, CHILD_MAINS, CAKES } from "../content/menu.js";
+import { menuDict, STARTERS, ADULT_MAINS, CHILD_MAINS } from "../content/menu.js";
 
 function blankPeople(adults, children) {
-  const make = (kind) => ({ person_name: "", kind, starter: "", main: "", cheese: null, cake: "" });
+  const make = (kind) => ({ person_name: "", kind, starter: "", main: "", cheese: null });
   return [...Array.from({ length: adults }, () => make("adult")), ...Array.from({ length: children }, () => make("child"))];
 }
 
 function isComplete(p) {
-  if (!p.person_name.trim() || !p.main || !p.cake) return false;
+  if (!p.person_name.trim() || !p.main) return false;
   return p.kind === "child" || (p.starter && p.cheese !== null);
 }
 
@@ -49,12 +49,10 @@ function Recap({ people, dishes, t }) {
           <strong>{p.person_name}</strong>
           {p.kind === "adult" ? (
             <span>
-              {dishes[p.starter]?.name} · {dishes[p.main]?.name} · {t.cheeseLine(p.cheese)} · {t.cakeLine(dishes[p.cake]?.name)}
+              {dishes[p.starter]?.name} · {dishes[p.main]?.name} · {t.cheeseLine(p.cheese)}
             </span>
           ) : (
-            <span>
-              {dishes[p.main]?.name} · {t.cakeLine(dishes[p.cake]?.name)}
-            </span>
+            <span>{dishes[p.main]?.name}</span>
           )}
         </li>
       ))}
@@ -100,18 +98,6 @@ export default function MenuPage() {
     </span>
   ));
 
-  // Parts left per flavour, counting what the other people of this form picked.
-  const cakesLeft = useMemo(() => {
-    if (state.status !== "ready") return () => ({});
-    return (self) =>
-      Object.fromEntries(
-        CAKES.map((c) => {
-          const mine = people.filter((p, i) => i !== self && p.cake === c).length;
-          return [c, state.cakeCap - (state.cakes[c] || 0) - mine];
-        }),
-      );
-  }, [state, people]);
-
   const setPerson = (i, key) => (value) =>
     setPeople((list) => list.map((p, j) => (j === i ? { ...p, [key]: value } : p)));
 
@@ -134,13 +120,7 @@ export default function MenuPage() {
       const res = await confirmMenu(token, people);
       setState((s) => ({ ...s, household: res.household, choices: res.choices }));
     } catch (err) {
-      if (err.code === "cake-full") {
-        setState((s) => ({ ...s, cakes: err.cakes || s.cakes }));
-        setPeople((list) => list.map((p) => (p.cake === err.cake ? { ...p, cake: "" } : p)));
-        setShowErrors(true);
-        setError(t.errorCakeFull(dishes[err.cake]?.name || err.cake));
-        setStep("form");
-      } else if (err.code === "already-confirmed") {
+      if (err.code === "already-confirmed") {
         window.location.reload();
       } else {
         setError(t.errorGeneric);
@@ -213,7 +193,6 @@ export default function MenuPage() {
         <form className="menu-form" onSubmit={goReview} noValidate>
           {people.map((p, i) => {
             const label = p.kind === "adult" ? t.adult(++adultN) : t.child(++childN);
-            const left = cakesLeft(i);
             const bad = showErrors && !isComplete(p);
             return (
               <section key={i} className={"menu-person" + (bad ? " is-invalid" : "")}>
@@ -257,18 +236,6 @@ export default function MenuPage() {
                     ]}
                   />
                 )}
-                <Choice
-                  legend={t.cake}
-                  value={p.cake}
-                  onChange={setPerson(i, "cake")}
-                  invalid={showErrors && !p.cake}
-                  options={CAKES.map((c) => ({
-                    value: c,
-                    name: dishes[c].name,
-                    disabled: left[c] <= 0 && p.cake !== c,
-                    note: left[c] <= 0 && p.cake !== c ? t.cakeFull : left[c] <= 5 ? t.cakeLeft(left[c]) : "",
-                  }))}
-                />
               </section>
             );
           })}
