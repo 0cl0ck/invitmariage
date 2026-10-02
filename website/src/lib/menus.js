@@ -1,7 +1,8 @@
 // Menu choices data layer.
 // Guests go through /api/menu (service role on the server, token in the URL).
-// Mariés read/write the tables directly (RLS: authenticated only) and send the
-// request emails through /api/menu-send. Without Supabase: local demo store.
+// Mariés read/write the tables directly (RLS: authenticated only), send the
+// request emails through /api/menu-send and choose on a guest's behalf through
+// /api/menu-admin. Without Supabase: local demo store.
 import { supabase, isSupabaseConfigured } from "./supabaseClient.js";
 
 export const menuMode = isSupabaseConfigured ? "supabase" : "local";
@@ -196,6 +197,27 @@ export async function sendRequests(ids) {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token || ""}` },
     body: JSON.stringify({ ids }),
+  });
+}
+
+/** Mariés choose (or change) a household's menus on its behalf: saved and
+ *  confirmed, no email to the guest. Throws MenuError(code): invalid… */
+export async function chooseForHousehold(id, choices) {
+  if (menuMode === "local") {
+    const db = demoLoad();
+    const h = db.households.find((x) => x.id === id);
+    if (!h) throw new MenuError("not-found");
+    db.choices = db.choices.filter((c) => c.household_id !== id);
+    db.choices.push(...choices.map((c, i) => ({ ...c, starter: c.starter || null, household_id: id, position: i })));
+    Object.assign(h, { confirmed_at: new Date().toISOString(), confirmation_sent_at: null });
+    demoSave(db);
+    return;
+  }
+  const { data } = await supabase.auth.getSession();
+  return api("/api/menu-admin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token || ""}` },
+    body: JSON.stringify({ id, choices }),
   });
 }
 

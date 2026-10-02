@@ -1,9 +1,9 @@
 // Espace mariés : choix des menus (/espace-maries/menus)
 // Liens personnels par foyer (créés depuis les RSVP « oui »), envoi des
 // demandes par email, suivi, totaux pour le restaurant, export CSV.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdminGate } from "./AdminShell.jsx";
-import { Stepper } from "./FormControls.jsx";
+import { ButtonGroup, Stepper } from "./FormControls.jsx";
 import { listResponses, latestByEmail } from "../lib/rsvp.js";
 import {
   listHouseholds,
@@ -12,6 +12,7 @@ import {
   reopenHousehold,
   deleteHousehold,
   sendRequests,
+  chooseForHousehold,
   menuUrl,
 } from "../lib/menus.js";
 import { menuDict, STARTERS, ADULT_MAINS, CHILD_MAINS } from "../content/menu.js";
@@ -131,6 +132,96 @@ function EditForm({ household, onSave, onCancel }) {
   );
 }
 
+/** Current choices when confirmed (to change them), else one blank row per person. */
+function initialPeople(h) {
+  if (h.confirmed_at && h.choices.length) {
+    return h.choices.map((c) => ({ person_name: c.person_name, kind: c.kind, starter: c.starter || "", main: c.main, cheese: c.cheese }));
+  }
+  const make = (kind) => ({ person_name: "", kind, starter: "", main: "", cheese: null });
+  return [...Array.from({ length: h.adults }, () => make("adult")), ...Array.from({ length: h.children }, () => make("child"))];
+}
+
+function isComplete(p) {
+  if (!p.person_name.trim() || !p.main) return false;
+  return p.kind === "child" || (p.starter && p.cheese !== null);
+}
+
+/** The mariés fill in the menus for a household (no email, or can't use the link). */
+function ChooseForm({ household, busy, onSave, onCancel }) {
+  const [people, setPeople] = useState(() => initialPeople(household));
+  const [showErrors, setShowErrors] = useState(false);
+  const panel = useRef(null);
+
+  useEffect(() => {
+    panel.current?.scrollIntoView({ block: "start" });
+  }, []);
+
+  const setPerson = (i, key) => (value) => setPeople((list) => list.map((p, j) => (j === i ? { ...p, [key]: value } : p)));
+
+  let adultN = 0;
+  let childN = 0;
+  const labels = people.map((p) => (p.kind === "adult" ? `Adulte ${++adultN}` : `Enfant ${++childN}`));
+  const missing = labels.filter((_, i) => !isComplete(people[i]));
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (missing.length) return setShowErrors(true);
+    onSave(people.map((p) => ({ ...p, person_name: p.person_name.trim() })));
+  };
+
+  return (
+    <div className="admin-panel" ref={panel}>
+      <h3 className="admin-panel__title">
+        {household.confirmed_at ? "Changer les menus de" : "Choisir les menus de"} {household.name}
+      </h3>
+      <p className="admin-panel__hint">
+        Vous remplissez à leur place : le menu est confirmé tout de suite, aucun email n'est envoyé à l'invité.
+        {household.confirmed_at && " Ses choix actuels sont pré-remplis."}
+      </p>
+      <form className="admin-form" onSubmit={submit} noValidate>
+        {people.map((p, i) => (
+          <section key={i} className={"menu-person" + (showErrors && !isComplete(p) ? " is-invalid" : "")}>
+            <h4 className="menu-person__title">{labels[i]}</h4>
+            <div className={"field" + (showErrors && !p.person_name.trim() ? " is-invalid" : "")}>
+              <label htmlFor={`choose-${i}`}>Prénom</label>
+              <input id={`choose-${i}`} type="text" maxLength={60} value={p.person_name} onChange={(e) => setPerson(i, "person_name")(e.target.value)} />
+            </div>
+            {p.kind === "adult" && (
+              <ButtonGroup legend="Entrée" value={p.starter} onChange={setPerson(i, "starter")} options={STARTERS.map((d) => ({ value: d, label: dishes[d].name }))} />
+            )}
+            <ButtonGroup
+              legend={p.kind === "adult" ? "Plat" : "Menu enfant"}
+              value={p.main}
+              onChange={setPerson(i, "main")}
+              options={(p.kind === "adult" ? ADULT_MAINS : CHILD_MAINS).map((d) => ({ value: d, label: dishes[d].name }))}
+            />
+            {p.kind === "adult" && (
+              <ButtonGroup
+                legend="Fromage"
+                value={p.cheese}
+                onChange={setPerson(i, "cheese")}
+                options={[
+                  { value: true, label: "Oui" },
+                  { value: false, label: "Non" },
+                ]}
+              />
+            )}
+          </section>
+        ))}
+        {showErrors && missing.length > 0 && <p className="rsvp__error">Il manque des choix pour : {missing.join(", ")}.</p>}
+        <div className="admin-form__actions">
+          <button type="submit" className="btn btn--gold" disabled={busy}>
+            Enregistrer et confirmer
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={onCancel} disabled={busy}>
+            Annuler
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function Totals({ households }) {
   const t = useMemo(() => {
     const count = Object.fromEntries([...STARTERS, ...ADULT_MAINS, ...CHILD_MAINS].map((k) => [k, 0]));
@@ -181,6 +272,7 @@ function MenusDashboard({ demo, onSignOut }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [editing, setEditing] = useState(null);
+  const [choosing, setChoosing] = useState(null);
 
   const load = useCallback(() => {
     return Promise.all([listHouseholds(), listResponses()])
@@ -321,6 +413,21 @@ function MenusDashboard({ demo, onSignOut }) {
         </div>
       )}
 
+      {choosing && (
+        <ChooseForm
+          key={choosing.id}
+          household={choosing}
+          busy={busy}
+          onCancel={() => setChoosing(null)}
+          onSave={(choices) =>
+            run(async () => {
+              await chooseForHousehold(choosing.id, choices);
+              setChoosing(null);
+            }, `Menus de ${choosing.name} enregistrés.`)
+          }
+        />
+      )}
+
       {loading && !households.length ? (
         <p className="admin__empty">Chargement…</p>
       ) : !households.length ? (
@@ -385,6 +492,18 @@ function MenusDashboard({ demo, onSignOut }) {
                         Copier le lien
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className="linklike"
+                      disabled={busy}
+                      onClick={() => {
+                        setEditing(null);
+                        setChoosing(h);
+                      }}
+                      title="Remplir les menus à leur place (aucun email envoyé)"
+                    >
+                      {h.confirmed_at ? "Changer les menus" : "Choisir pour eux"}
+                    </button>
                     {h.confirmed_at && (
                       <button
                         type="button"
@@ -398,7 +517,16 @@ function MenusDashboard({ demo, onSignOut }) {
                         Rouvrir
                       </button>
                     )}
-                    <button type="button" className="linklike" disabled={busy} onClick={() => setEditing(h)} aria-label={`Modifier ${h.name}`}>
+                    <button
+                      type="button"
+                      className="linklike"
+                      disabled={busy}
+                      onClick={() => {
+                        setChoosing(null);
+                        setEditing(h);
+                      }}
+                      aria-label={`Modifier ${h.name}`}
+                    >
                       ✎
                     </button>
                     <button

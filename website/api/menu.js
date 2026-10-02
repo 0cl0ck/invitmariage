@@ -1,7 +1,7 @@
 // Guest menu endpoint (/menu/<token> page).
 //   GET  /api/menu?token=…            → household, confirmed choices
 //   POST /api/menu { token, choices } → confirm (final) + confirmation email
-import { adminClient, readJson } from "./_lib/server.js";
+import { adminClient, readJson, sanitizeChoices } from "./_lib/server.js";
 import { confirmationEmail, sendEmail } from "./_lib/mail.js";
 
 const TOKEN_RE = /^[0-9a-f]{32}$/;
@@ -43,18 +43,6 @@ function publicHousehold(h) {
     confirmedAt: h.confirmed_at,
     confirmationSent: Boolean(h.confirmation_sent_at),
   };
-}
-
-// Keep only known fields; the SQL CHECK constraints do the real validation.
-function sanitizeChoices(raw) {
-  if (!Array.isArray(raw) || raw.length > 40) return null;
-  return raw.map((c) => ({
-    person_name: String(c?.person_name || "").trim().slice(0, 60),
-    kind: c?.kind === "child" ? "child" : "adult",
-    starter: c?.kind === "child" ? "" : String(c?.starter || ""),
-    main: String(c?.main || ""),
-    cheese: c?.kind === "child" ? false : Boolean(c?.cheese),
-  }));
 }
 
 export default async function handler(req, res) {

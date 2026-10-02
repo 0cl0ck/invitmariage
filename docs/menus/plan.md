@@ -55,3 +55,10 @@ Gemini : bloqué plus de 25 min sans sortie, arrêté.
 1. Hugo : test de bout en bout avec son adresse (RSVP manuel avec son email, « Créer les liens manquants », bouton « Envoyer » de la ligne seulement, choix, confirmation, email reçu), puis suppression du foyer test.
 2. Push de `feature/choix-menus`, PR vers `main` (accord d'Hugo).
 3. Envoi réel aux foyers présents.
+
+## Choix par les mariés (02/10)
+- Demande d'Hugo : choisir les menus à la place des foyers sans email, ou trop âgés pour utiliser le lien.
+- Branche `feature/menus-par-les-maries` (depuis `feature/choix-menus`, état prod). Bouton « Choisir pour eux » (ou « Changer les menus » si déjà confirmé, formulaire pré-rempli) sur chaque ligne de `/espace-maries/menus`.
+- `POST /api/menu-admin { id, choices }` : session des mariés obligatoire (`requireMaries`), déverrouille si déjà confirmé, appelle `confirm_menu`, remet l'ancien verrou si l'appel échoue. **Aucun email à l'invité** ; son lien affiche ensuite le récap verrouillé. Aucune migration SQL.
+- Vérifié : lint, build, handler testé avec une fausse base (401 sans session ou hors liste blanche, 400, 404, premier choix, modification, échec avec verrou rétabli), parcours navigateur en mode démo (desktop + mobile 390 px, totaux, lien invité verrouillé).
+- Non vérifié : appel réel à Supabase en prod (clé service illisible depuis le VPS).

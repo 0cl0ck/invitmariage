@@ -48,3 +48,15 @@ export function readJson(req) {
     return {};
   }
 }
+
+// Keep only known fields; the SQL CHECK constraints do the real validation.
+export function sanitizeChoices(raw) {
+  if (!Array.isArray(raw) || raw.length > 40) return null;
+  return raw.map((c) => ({
+    person_name: String(c?.person_name || "").trim().slice(0, 60),
+    kind: c?.kind === "child" ? "child" : "adult",
+    starter: c?.kind === "child" ? "" : String(c?.starter || ""),
+    main: String(c?.main || ""),
+    cheese: c?.kind === "child" ? false : Boolean(c?.cheese),
+  }));
+}
