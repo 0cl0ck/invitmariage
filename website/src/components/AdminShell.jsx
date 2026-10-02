@@ -7,6 +7,7 @@ import { wedding } from "../content/variants.js";
 
 const NAV = [
   { to: "/espace-maries", label: "Réponses", end: true },
+  { to: "/espace-maries/menus", label: "Menus" },
   { to: "/espace-maries/checklist", label: "Checklist" },
 ];
 
