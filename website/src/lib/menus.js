@@ -35,6 +35,8 @@ function demoSave(db) {
     /* ignore */
   }
 }
+// "none" = « Sans entrée » in the forms; stored as null (as the server does).
+const storedStarter = (starter) => (starter && starter !== "none" ? starter : null);
 function newToken() {
   return crypto.randomUUID().replace(/-/g, "");
 }
@@ -63,7 +65,7 @@ export async function fetchMenu(token) {
     if (!h) throw new MenuError("not-found");
     demoSave(db);
     return {
-      household: { name: h.name, email: h.email, lang: h.lang, adults: h.adults, children: h.children, confirmedAt: h.confirmed_at, confirmationSent: Boolean(h.confirmed_at && h.email) },
+      household: { name: h.name, email: h.email, lang: h.lang, adults: h.adults, children: h.children, confirmedAt: h.confirmed_at, confirmationSent: Boolean(h.confirmed_at && h.email), askRsvp: Boolean(h.ask_rsvp) },
       choices: db.choices.filter((c) => c.household_id === h.id),
     };
   }
@@ -77,7 +79,7 @@ export async function confirmMenu(token, choices) {
     const h = db.households.find((x) => x.token === token);
     if (!h) throw new MenuError("not-found");
     if (h.confirmed_at) throw new MenuError("already-confirmed");
-    db.choices.push(...choices.map((c, i) => ({ ...c, starter: c.starter || null, household_id: h.id, position: i })));
+    db.choices.push(...choices.map((c, i) => ({ ...c, starter: storedStarter(c.starter), household_id: h.id, position: i })));
     h.confirmed_at = new Date().toISOString();
     demoSave(db);
     return { household: { ...h, confirmedAt: h.confirmed_at, confirmationSent: Boolean(h.email) }, choices };
@@ -86,6 +88,36 @@ export async function confirmMenu(token, choices) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token, choices }),
+  });
+}
+
+/**
+ * Late invite (ask_rsvp): presence, diet, note and menus in one final answer.
+ * answer: { attending: "yes"|"no", adults, children, dietary, message, choices }
+ * Throws MenuError(code): already-confirmed, invalid…
+ */
+export async function answerInvite(token, answer) {
+  if (menuMode === "local") {
+    // Demo: no RSVP row (the server function writes it in Supabase mode).
+    const db = demoLoad();
+    const h = db.households.find((x) => x.token === token);
+    if (!h) throw new MenuError("not-found");
+    if (h.confirmed_at) throw new MenuError("already-confirmed");
+    const yes = answer.attending === "yes";
+    const choices = yes ? answer.choices : [];
+    db.choices = db.choices.filter((c) => c.household_id !== h.id);
+    db.choices.push(...choices.map((c, i) => ({ ...c, starter: storedStarter(c.starter), household_id: h.id, position: i })));
+    Object.assign(h, { adults: yes ? answer.adults : 0, children: yes ? answer.children : 0, confirmed_at: new Date().toISOString() });
+    demoSave(db);
+    return {
+      household: { name: h.name, email: h.email, lang: h.lang, adults: h.adults, children: h.children, confirmedAt: h.confirmed_at, confirmationSent: Boolean(h.email && choices.length), askRsvp: true },
+      choices,
+    };
+  }
+  return api("/api/menu", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, ...answer }),
   });
 }
 
@@ -110,7 +142,7 @@ export async function listHouseholds() {
   return (hs || []).map((h) => ({ ...h, choices: (cs || []).filter((c) => c.household_id === h.id) }));
 }
 
-/** rows: [{ rsvp_id, name, email, adults, children }] */
+/** rows: [{ rsvp_id, name, email, adults, children }], or a late invite: [{ name, email, adults, children, ask_rsvp: true }] */
 export async function createHouseholds(rows) {
   if (!rows.length) return;
   if (menuMode === "local") {
@@ -178,9 +210,11 @@ export async function deleteHousehold(id) {
   if (error) throw error;
 }
 
-/** Email the menu request. Returns { sent, skipped }. */
-export async function sendRequests(ids) {
+/** Email the menu request (or, with preview, the same email to the signed-in
+ *  marié only, nothing marked as sent). Returns { sent, skipped, to? }. */
+export async function sendRequests(ids, { preview = false } = {}) {
   if (menuMode === "local") {
+    if (preview) return { sent: ids.length, skipped: 0, to: "(démo : aucun email)" };
     const db = demoLoad();
     let sent = 0;
     for (const h of db.households) {
@@ -196,7 +230,7 @@ export async function sendRequests(ids) {
   return api("/api/menu-send", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token || ""}` },
-    body: JSON.stringify({ ids }),
+    body: JSON.stringify({ ids, preview }),
   });
 }
 
@@ -208,7 +242,7 @@ export async function chooseForHousehold(id, choices) {
     const h = db.households.find((x) => x.id === id);
     if (!h) throw new MenuError("not-found");
     db.choices = db.choices.filter((c) => c.household_id !== id);
-    db.choices.push(...choices.map((c, i) => ({ ...c, starter: c.starter || null, household_id: id, position: i })));
+    db.choices.push(...choices.map((c, i) => ({ ...c, starter: storedStarter(c.starter), household_id: id, position: i })));
     Object.assign(h, { confirmed_at: new Date().toISOString(), confirmation_sent_at: null });
     demoSave(db);
     return;
@@ -219,6 +253,26 @@ export async function chooseForHousehold(id, choices) {
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token || ""}` },
     body: JSON.stringify({ id, choices }),
   });
+}
+
+const STALE_CHOICE = "les menus de ce foyer ont changé entre-temps : cliquez sur « Rafraîchir » puis recommencez.";
+
+/** Mariés: correct one person's allergy / diet for the restaurant list. */
+export async function updateAllergy(choice, allergy) {
+  const value = String(allergy || "").trim().slice(0, 120) || null;
+  if (menuMode === "local") {
+    const db = demoLoad();
+    const c = db.choices.find((x) => x.household_id === choice.household_id && x.position === choice.position);
+    if (!c) throw new Error(STALE_CHOICE);
+    c.allergy = value;
+    demoSave(db);
+    return value;
+  }
+  // Menus changed meanwhile (new rows): 0 row updated must not look like a success.
+  const { data, error } = await supabase.from("menu_choices").update({ allergy: value }).eq("id", choice.id).select("id");
+  if (error) throw error;
+  if (!data?.length) throw new Error(STALE_CHOICE);
+  return value;
 }
 
 export function menuUrl(h) {

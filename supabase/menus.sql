@@ -135,3 +135,10 @@ create unique index if not exists menu_households_rsvp_uniq
 -- ---------------------------------------------------------------------------
 drop function if exists public.menu_cake_counts();
 alter table public.menu_choices drop column if exists cake;
+
+-- ---------------------------------------------------------------------------
+-- 9) Migrations du 04/10, à exécuter après ce fichier sur une base neuve :
+--    supabase/2026-10-04-invites-derniere-minute.sql (ask_rsvp + answer_invite)
+--    supabase/2026-10-04-entree-facultative-allergies.sql (entrée facultative,
+--    allergie par personne, confirm_menu qui la recopie)
+-- ---------------------------------------------------------------------------

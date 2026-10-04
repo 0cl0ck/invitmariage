@@ -62,3 +62,25 @@ Gemini : bloqué plus de 25 min sans sortie, arrêté.
 - `POST /api/menu-admin { id, choices }` : session des mariés obligatoire (`requireMaries`), déverrouille si déjà confirmé, appelle `confirm_menu`, remet l'ancien verrou si l'appel échoue. **Aucun email à l'invité** ; son lien affiche ensuite le récap verrouillé. Aucune migration SQL.
 - Vérifié : lint, build, handler testé avec une fausse base (401 sans session ou hors liste blanche, 400, 404, premier choix, modification, échec avec verrou rétabli), parcours navigateur en mode démo (desktop + mobile 390 px, totaux, lien invité verrouillé).
 - Non vérifié : appel réel à Supabase en prod (clé service illisible depuis le VPS).
+
+## Invités de dernière minute (04/10)
+- Demande d'Hugo : un seul email pour les retardataires, qui donnent leur présence, leur régime / allergies, un mot et leur menu.
+- `/espace-maries/menus` › « + Invité de dernière minute » (nom, email, nombre proposé) crée un foyer `ask_rsvp = true`. « Envoyer » part avec l'email d'invitation (`inviteEmail`, FR/ES, lien vers le site pour le programme), sinon « Copier le lien ».
+- Page `/menu/<jeton>` : présent / absent ; si présent, adultes et enfants (modifiables), régime / allergies, menus, un mot, récap, confirmation (+ email récap). Si absent : un mot, fin.
+- Base : `answer_invite()` écrit la ligne RSVP (`variant = 'derniere-minute'`, visible dans « Réponses ») et confirme le menu dans la même transaction ; absent = foyer confirmé avec 0 personne (« ✗ Absent » dans l'espace mariés). « Rouvrir » permet une nouvelle réponse, qui remplace la ligne RSVP.
+
+## Entrée facultative, allergies, liste restaurant (04/10)
+- « Sans entrée » proposé aux invités et dans « Choisir pour eux / Changer les menus » (stocké `starter = null`).
+- `menu_choices.allergy` : allergie par personne, corrigée par les mariés (le texte libre du RSVP reste intact et s'affiche à côté). Recopiée par `confirm_menu`, donc « Changer les menus » ne l'efface pas.
+- `/espace-maries/restaurant` : liste par personne (prénom, entrée, plat, fromage, allergie corrigeable), foyers sans menu signalés, impression / PDF : page 1 = fiche allergies cuisine et service (pictos 🥩 🥣 🐟 🐑 🌱 🍗 🐠 🧀 et ⚠️), page 2 = totaux + liste. Aide-mémoire proposé : le picto du plat et ⚠️ sur chaque marque-place.
+
+## Plus de date limite + aperçu des emails (04/10)
+- Décision d'Hugo : aucune date affichée, « dès que possible » partout (page du lien menu, email de demande de menu, section RSVP du site d'invitation que les retardataires voient via « Programme et infos pratiques »). `rsvpDeadline` reste dans `variants.js`, inutilisé côté invités.
+- Bouton « Aperçu » sur chaque ligne non confirmée de `/espace-maries/menus` : `POST /api/menu-send { ids, preview: true }` envoie le même email (invitation ou demande) au marié connecté uniquement, objet « [Aperçu] … », sans rien marquer comme envoyé. Le lien est celui du foyer : l'ouvrir pour voir la page, ne pas confirmer à sa place.
+
+## Mise en prod du 04/10 (ordre obligatoire)
+1. Coller dans l'éditeur SQL Supabase, dans cet ordre : `supabase/2026-10-04-invites-derniere-minute.sql` puis `supabase/2026-10-04-entree-facultative-allergies.sql` (idempotents). Contrôle : `select ask_rsvp from menu_households limit 1; select allergy from menu_choices limit 1;` ne renvoient pas d'erreur.
+2. Merge de la PR dans `main` = déploiement Vercel de production.
+- Si le code part avant le SQL : les liens existants continuent de marcher (lecture en `select *`), mais l'ajout d'un retardataire, « Sans entrée » et les allergies échouent avec un message d'erreur.
+- Vérifié : SQL sur PGlite (oui / non / rollback complet / réponse remplacée après « Rouvrir » / droits / contrainte retrouvée par sa définition / allergie conservée), handlers avec une fausse base (routage, erreurs, emails FR/ES), parcours navigateur en mode démo (desktop, mobile 390 px, impression PDF).
+- Non vérifié : Supabase et Resend réels.
