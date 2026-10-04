@@ -96,7 +96,7 @@ const ceremonieFr = {
   rsvp: {
     kicker: "Votre réponse",
     title: "Serez-vous des nôtres ?",
-    intro: `Merci de nous répondre avant le ${weddingFr.rsvpDeadline}.`,
+    intro: "Merci de nous répondre dès que possible.",
     askDietary: true,
     askChildren: true,
   },
@@ -248,7 +248,7 @@ const ceremonieEs = {
   rsvp: {
     kicker: "Tu respuesta",
     title: "¿Nos acompañarás?",
-    intro: `Por favor, responde antes del ${weddingEs.rsvpDeadline}.`,
+    intro: "Por favor, responde lo antes posible.",
     askDietary: true,
     askChildren: true,
   },

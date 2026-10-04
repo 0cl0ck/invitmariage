@@ -55,8 +55,10 @@ export function sanitizeChoices(raw) {
   return raw.map((c) => ({
     person_name: String(c?.person_name || "").trim().slice(0, 60),
     kind: c?.kind === "child" ? "child" : "adult",
-    starter: c?.kind === "child" ? "" : String(c?.starter || ""),
+    // "none" = « Sans entrée » in the forms, stored as null.
+    starter: c?.kind === "child" || c?.starter === "none" ? "" : String(c?.starter || ""),
     main: String(c?.main || ""),
     cheese: c?.kind === "child" ? false : Boolean(c?.cheese),
+    allergy: String(c?.allergy || "").trim().slice(0, 120),
   }));
 }

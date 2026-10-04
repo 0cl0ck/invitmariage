@@ -1096,6 +1096,7 @@ button {
 }
 .admin-nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
   margin-left: auto;
 }
@@ -1746,4 +1747,140 @@ button {
   border: 1px solid var(--color-line);
   border-radius: var(--radius-sm);
   padding: 0.2rem 0.3rem;
+}
+
+/* ------------- Espace mariés : liste restaurant (écran + impression) ------------- */
+.resto-print-only {
+  display: none;
+}
+.resto-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 500;
+  color: var(--color-cream);
+  margin: 1.6rem 0 0.6rem;
+}
+.resto-legend,
+.resto-tip {
+  font-size: var(--fs-small);
+  color: var(--color-text-muted);
+  margin-bottom: 0.9rem;
+}
+.resto-tip {
+  margin: 0.9rem 0 1.5rem;
+}
+.resto-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.8rem;
+}
+.resto-card {
+  border: 2px solid #e6a07a;
+  border-radius: var(--radius-sm);
+  padding: 0.8rem 1rem;
+}
+.resto-card__name {
+  font-size: 1.15rem;
+  color: var(--color-cream);
+}
+.resto-card__name span {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+.resto-card__allergy {
+  color: #e6a07a;
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin: 0.2rem 0;
+}
+.resto-card__menu {
+  font-size: var(--fs-small);
+}
+.resto-input {
+  width: 100%;
+  min-width: 10rem;
+  background: rgba(244, 236, 224, 0.05);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  font-size: var(--fs-small);
+}
+.resto-input:focus {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+.resto-row--allergy td {
+  background: rgba(230, 160, 122, 0.08);
+}
+.resto-rsvp {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+@media print {
+  @page {
+    margin: 12mm;
+  }
+  html,
+  body,
+  .admin {
+    background: #fff !important;
+    min-height: 0;
+    padding: 0;
+  }
+  .admin__head,
+  .resto-no-print {
+    display: none !important;
+  }
+  .resto,
+  .resto * {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .resto-print-only {
+    display: inline !important;
+  }
+  .resto-print-head {
+    display: block !important;
+    font-size: 10pt;
+    margin-bottom: 4mm;
+  }
+  .resto-sheet {
+    break-after: page;
+  }
+  .resto-card {
+    break-inside: avoid;
+    border: 2px solid #000 !important;
+  }
+  .resto-card__allergy {
+    font-size: 13pt;
+    text-decoration: underline;
+  }
+  .resto .admin-table-wrap {
+    overflow: visible;
+    border: 0;
+  }
+  .resto .admin-table th,
+  .resto .admin-table td {
+    border-bottom: 1px solid #999 !important;
+    padding: 3px 6px;
+    font-size: 10pt;
+  }
+  .resto .admin-table tr {
+    break-inside: avoid;
+  }
+  .resto-row--allergy td {
+    font-weight: 600;
+  }
+}
+.resto-check {
+  display: grid;
+  gap: 0.3rem;
+  padding-left: 1.1rem;
+  font-size: var(--fs-small);
 }

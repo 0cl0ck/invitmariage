@@ -1,6 +1,6 @@
-// Menu emails (request + confirmation), sent through Resend's HTTP API.
+// Menu emails (request, late invitation, confirmation), sent through Resend's HTTP API.
 import { menuDict } from "../../src/content/menu.js";
-import { menuLink } from "./server.js";
+import { menuLink, siteUrl } from "./server.js";
 
 const RESEND_URL = "https://api.resend.com";
 const FROM = process.env.MAIL_FROM || "Hugo & Laura <mariage@hugolaura.fr>";
@@ -21,8 +21,16 @@ const copy = {
       "Pour le repas, le restaurant nous demande le choix de chacun : entrée, plat et fromage. Cela prend deux minutes.",
     ],
     button: "Choisir notre menu",
-    deadline: (d) => `Merci de répondre avant le ${d}. Une fois votre choix confirmé, vous recevrez un récapitulatif par email.`,
+    deadline: "Merci de nous répondre dès que possible. Une fois votre choix confirmé, vous recevrez un récapitulatif par email.",
     linkFallback: "Si le bouton ne fonctionne pas, copiez ce lien :",
+    inviteSubject: "Notre mariage le 10 octobre : votre réponse et votre menu",
+    inviteBody: [
+      "Nous serions ravis de vous compter parmi nous le samedi 10 octobre à Dunkerque !",
+      "Sur une seule page, dites-nous si vous serez présents, vos éventuels régimes ou allergies, et choisissez le menu de chacun (entrée, plat, fromage). Cela prend deux minutes.",
+    ],
+    inviteButton: "Répondre et choisir notre menu",
+    inviteDeadline: "Le mariage approche : merci de nous répondre dès que possible.",
+    inviteInfo: "Le programme et les infos pratiques sont sur notre site :",
     confirmSubject: "Votre menu est confirmé · Hugo & Laura",
     confirmBody: "Merci ! Voici le récapitulatif de votre menu pour le samedi 10 octobre :",
     confirmFooter: "Un changement indispensable ? Répondez simplement à cet email.",
@@ -36,8 +44,16 @@ const copy = {
       "Para la comida, el restaurante nos pide la elección de cada uno: entrada, plato fuerte y quesos. Toma dos minutos.",
     ],
     button: "Elegir nuestro menú",
-    deadline: (d) => `Por favor respondan antes del ${d}. Una vez confirmada su elección, recibirán un resumen por correo.`,
+    deadline: "Por favor respondan lo antes posible. Una vez confirmada su elección, recibirán un resumen por correo.",
     linkFallback: "Si el botón no funciona, copien este enlace:",
+    inviteSubject: "Nuestra boda el 10 de octubre: su respuesta y su menú",
+    inviteBody: [
+      "¡Nos encantaría contar con ustedes el sábado 10 de octubre en Dunkerque!",
+      "En una sola página, cuéntennos si podrán asistir, si tienen alguna restricción alimentaria o alergia, y elijan el menú de cada uno (entrada, plato fuerte, quesos). Toma dos minutos.",
+    ],
+    inviteButton: "Responder y elegir nuestro menú",
+    inviteDeadline: "La boda se acerca: por favor respondan lo antes posible.",
+    inviteInfo: "El programa y la información práctica están en nuestra página:",
     confirmSubject: "Su menú está confirmado · Hugo & Laura",
     confirmBody: "¡Gracias! Este es el resumen de su menú para el sábado 10 de octubre:",
     confirmFooter: "¿Un cambio indispensable? Simplemente respondan a este correo.",
@@ -59,7 +75,7 @@ export function recapLines(choices, lang) {
   return choices.map((c) => {
     const parts =
       c.kind === "adult"
-        ? [dishes[c.starter]?.name, dishes[c.main]?.name, ui.cheeseLine(c.cheese)]
+        ? [c.starter ? dishes[c.starter]?.name : ui.noStarter, dishes[c.main]?.name, ui.cheeseLine(c.cheese)]
         : [dishes[c.main]?.name];
     return { who: c.person_name, parts };
   });
@@ -69,18 +85,48 @@ export function requestEmail(household) {
   const lang = household.lang === "es" ? "es" : "fr";
   const t = copy[lang];
   const link = menuLink(household);
-  const deadline = menuDict[lang].deadline;
   const html = layout(`
 <p>${esc(t.hello(household.name))}</p>
 ${t.requestBody.map((p) => `<p>${esc(p)}</p>`).join("\n")}
 <p style="text-align:center;margin:28px 0">
   <a href="${esc(link)}" style="display:inline-block;background:#a8451f;color:#fffaf2;text-decoration:none;padding:14px 28px;border-radius:4px;font-family:Arial,sans-serif;font-size:16px">${esc(t.button)}</a>
 </p>
-<p>${esc(t.deadline(deadline))}</p>
+<p>${esc(t.deadline)}</p>
 <p style="font-size:13px;color:#6b5a48">${esc(t.linkFallback)}<br><a href="${esc(link)}" style="color:#a8451f;word-break:break-all">${esc(link)}</a></p>
 <p>${esc(t.signature)}</p>`);
-  const text = [t.hello(household.name), "", ...t.requestBody, "", `${t.button} : ${link}`, "", t.deadline(deadline), "", t.signature].join("\n");
+  const text = [t.hello(household.name), "", ...t.requestBody, "", `${t.button} : ${link}`, "", t.deadline, "", t.signature].join("\n");
   return { from: FROM, to: [household.email], reply_to: REPLY_TO, subject: t.requestSubject, html, text };
+}
+
+/** Late invite (ask_rsvp): presence, diet, note and menu on the same link. */
+export function inviteEmail(household) {
+  const lang = household.lang === "es" ? "es" : "fr";
+  const t = copy[lang];
+  const link = menuLink(household);
+  const site = siteUrl();
+  const html = layout(`
+<p>${esc(t.hello(household.name))}</p>
+${t.inviteBody.map((p) => `<p>${esc(p)}</p>`).join("\n")}
+<p style="text-align:center;margin:28px 0">
+  <a href="${esc(link)}" style="display:inline-block;background:#a8451f;color:#fffaf2;text-decoration:none;padding:14px 28px;border-radius:4px;font-family:Arial,sans-serif;font-size:16px">${esc(t.inviteButton)}</a>
+</p>
+<p>${esc(t.inviteDeadline)}</p>
+<p>${esc(t.inviteInfo)} <a href="${esc(site)}" style="color:#a8451f">${esc(site.replace(/^https?:\/\//, ""))}</a></p>
+<p style="font-size:13px;color:#6b5a48">${esc(t.linkFallback)}<br><a href="${esc(link)}" style="color:#a8451f;word-break:break-all">${esc(link)}</a></p>
+<p>${esc(t.signature)}</p>`);
+  const text = [
+    t.hello(household.name),
+    "",
+    ...t.inviteBody,
+    "",
+    `${t.inviteButton} : ${link}`,
+    "",
+    t.inviteDeadline,
+    `${t.inviteInfo} ${site}`,
+    "",
+    t.signature,
+  ].join("\n");
+  return { from: FROM, to: [household.email], reply_to: REPLY_TO, subject: t.inviteSubject, html, text };
 }
 
 export function confirmationEmail(household, choices) {

@@ -1,16 +1,30 @@
 // Guest menu page (/menu/:token): one block per person, review, then a final
 // confirmation. Once confirmed the page only shows the recap.
+// Late invites (household.askRsvp) first say whether they come, how many,
+// their diet / allergies and a note: all saved with the menus in one answer.
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useDict, useLang } from "../i18n/LanguageContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
-import { fetchMenu, confirmMenu } from "../lib/menus.js";
+import { Stepper } from "../components/FormControls.jsx";
+import { fetchMenu, confirmMenu, answerInvite } from "../lib/menus.js";
 import { menuDict, STARTERS, ADULT_MAINS, CHILD_MAINS } from "../content/menu.js";
 
-function blankPeople(adults, children) {
-  const make = (kind) => ({ person_name: "", kind, starter: "", main: "", cheese: null });
-  return [...Array.from({ length: adults }, () => make("adult")), ...Array.from({ length: children }, () => make("child"))];
+const blankPerson = (kind) => ({ person_name: "", kind, starter: "", main: "", cheese: null });
+
+/** One block per person; keeps what was already typed when the counts change. */
+function resizePeople(list, adults, children) {
+  const keep = (kind, n) => {
+    const current = list.filter((p) => p.kind === kind);
+    return Array.from({ length: n }, (_, i) => current[i] || blankPerson(kind));
+  };
+  return [...keep("adult", adults), ...keep("child", children)];
 }
+
+// Steppers accept typed values: clamp them (max 20 people in all, as the RSVP).
+const MAX_ADULTS = 12;
+const MAX_CHILDREN = 8;
+const toCount = (value, max) => Math.max(0, Math.min(max, parseInt(value, 10) || 0));
 
 function isComplete(p) {
   if (!p.person_name.trim() || !p.main) return false;
@@ -49,7 +63,7 @@ function Recap({ people, dishes, t }) {
           <strong>{p.person_name}</strong>
           {p.kind === "adult" ? (
             <span>
-              {dishes[p.starter]?.name} · {dishes[p.main]?.name} · {t.cheeseLine(p.cheese)}
+              {dishes[p.starter]?.name || t.noStarter} · {dishes[p.main]?.name} · {t.cheeseLine(p.cheese)}
             </span>
           ) : (
             <span>{dishes[p.main]?.name}</span>
@@ -64,7 +78,7 @@ export default function MenuPage() {
   const { token } = useParams();
   const { lang } = useLang();
   const { wedding } = useDict();
-  const { dishes, ui: t, deadline } = menuDict[lang];
+  const { dishes, ui: t } = menuDict[lang];
 
   const [state, setState] = useState({ status: "loading" });
   const [people, setPeople] = useState([]);
@@ -72,6 +86,7 @@ export default function MenuPage() {
   const [showErrors, setShowErrors] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [invite, setInvite] = useState({ attending: "", adults: "1", children: "0", dietary: "", message: "" });
 
   useEffect(() => {
     document.title = `${t.docTitle} · ${wedding.couple}`;
@@ -83,7 +98,12 @@ export default function MenuPage() {
       .then((data) => {
         if (!alive) return;
         setState({ status: "ready", ...data });
-        setPeople(blankPeople(data.household.adults, data.household.children));
+        // A late invite can change the counts, within the form's limits.
+        const { adults, children, askRsvp } = data.household;
+        const a = askRsvp ? Math.min(adults, MAX_ADULTS) : adults;
+        const c = askRsvp ? Math.min(children, MAX_CHILDREN) : children;
+        setPeople(resizePeople([], a, c));
+        setInvite((f) => ({ ...f, adults: String(a), children: String(c) }));
       })
       .catch((err) => alive && setState({ status: err.code === "not-found" ? "notfound" : "error" }));
     return () => {
@@ -101,8 +121,26 @@ export default function MenuPage() {
   const setPerson = (i, key) => (value) =>
     setPeople((list) => list.map((p, j) => (j === i ? { ...p, [key]: value } : p)));
 
+  const askRsvp = state.status === "ready" && state.household.askRsvp;
+  const absent = askRsvp && invite.attending === "no";
+  const setInviteField = (key) => (value) => setInvite((f) => ({ ...f, [key]: value }));
+  const setCount = (key) => (value) => {
+    const next = { ...invite, [key]: value };
+    setInvite(next);
+    setPeople((list) => resizePeople(list, toCount(next.adults, MAX_ADULTS), toCount(next.children, MAX_CHILDREN)));
+  };
+
   const goReview = (e) => {
     e.preventDefault();
+    if (askRsvp && !invite.attending) return;
+    if (absent) {
+      submit();
+      return;
+    }
+    if (!people.length) {
+      setError(t.errorCount);
+      return;
+    }
     if (!people.every(isComplete)) {
       setShowErrors(true);
       setError(t.errorIncomplete);
@@ -117,7 +155,16 @@ export default function MenuPage() {
     setSaving(true);
     setError("");
     try {
-      const res = await confirmMenu(token, people);
+      const res = askRsvp
+        ? await answerInvite(token, {
+            attending: invite.attending,
+            adults: absent ? 0 : toCount(invite.adults, MAX_ADULTS),
+            children: absent ? 0 : toCount(invite.children, MAX_CHILDREN),
+            dietary: absent ? "" : invite.dietary,
+            message: invite.message,
+            choices: absent ? [] : people,
+          })
+        : await confirmMenu(token, people);
       setState((s) => ({ ...s, household: res.household, choices: res.choices }));
     } catch (err) {
       if (err.code === "already-confirmed") {
@@ -139,6 +186,17 @@ export default function MenuPage() {
         <h1 className="section-title">{t.notFoundTitle}</h1>
         <p className="menu-page__muted">
           {t.notFoundText}
+          {contact}.
+        </p>
+      </>
+    );
+  } else if (state.household.confirmedAt && askRsvp && state.household.adults + state.household.children === 0) {
+    body = (
+      <>
+        <p className="kicker">{t.absentKicker}</p>
+        <h1 className="section-title">{t.absentTitle}</h1>
+        <p className="menu-page__muted">
+          {t.absentText}
           {contact}.
         </p>
       </>
@@ -166,6 +224,18 @@ export default function MenuPage() {
         <p className="kicker">{t.kicker}</p>
         <h1 className="section-title">{t.reviewTitle}</h1>
         <Recap people={people} dishes={dishes} t={t} />
+        {askRsvp && invite.dietary.trim() && (
+          <p className="menu-page__muted">
+            {t.reviewDietary}
+            {invite.dietary.trim()}
+          </p>
+        )}
+        {askRsvp && invite.message.trim() && (
+          <p className="menu-page__muted">
+            {t.reviewMessage}
+            {invite.message.trim()}
+          </p>
+        )}
         <p className="menu-page__lock">{t.reviewNote}</p>
         {error && <p className="rsvp__error">{error}</p>}
         <div className="menu-page__actions">
@@ -184,14 +254,49 @@ export default function MenuPage() {
     body = (
       <>
         <p className="kicker">{t.kicker}</p>
-        <h1 className="section-title">{t.title}</h1>
+        <h1 className="section-title">{askRsvp ? t.inviteTitle : t.title}</h1>
         <p className="menu-page__muted">
-          {t.intro(state.household.name)} {t.introDeadline(deadline)}
+          {askRsvp
+            ? `${t.inviteIntro(state.household.name)} ${t.introDeadline}`
+            : `${t.intro(state.household.name)} ${t.introDeadline}`}
         </p>
+        {askRsvp && (
+          <p className="menu-page__muted menu-page__small">
+            <a href="/">{t.siteLink}</a>
+          </p>
+        )}
         <p className="menu-page__lock">{t.lockNote}</p>
 
         <form className="menu-form" onSubmit={goReview} noValidate>
-          {people.map((p, i) => {
+          {askRsvp && (
+            <Choice
+              legend={t.attending}
+              value={invite.attending}
+              onChange={setInviteField("attending")}
+              options={[
+                { value: "yes", name: t.attendingYes },
+                { value: "no", name: t.attendingNo },
+              ]}
+            />
+          )}
+          {askRsvp && invite.attending === "yes" && (
+            <>
+              <Stepper id="adults" label={t.adultsLabel} value={invite.adults} min={0} max={MAX_ADULTS} onChange={setCount("adults")} />
+              <Stepper id="children" label={t.childrenLabel} value={invite.children} min={0} max={MAX_CHILDREN} onChange={setCount("children")} />
+              <div className="field">
+                <label htmlFor="dietary">{t.dietary}</label>
+                <input
+                  id="dietary"
+                  type="text"
+                  maxLength={200}
+                  value={invite.dietary}
+                  placeholder={t.dietaryPh}
+                  onChange={(e) => setInviteField("dietary")(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+          {(!askRsvp || invite.attending === "yes") && people.map((p, i) => {
             const label = p.kind === "adult" ? t.adult(++adultN) : t.child(++childN);
             const bad = showErrors && !isComplete(p);
             return (
@@ -214,7 +319,7 @@ export default function MenuPage() {
                     value={p.starter}
                     onChange={setPerson(i, "starter")}
                     invalid={showErrors && !p.starter}
-                    options={STARTERS.map((d) => ({ value: d, ...dishes[d] }))}
+                    options={[...STARTERS.map((d) => ({ value: d, ...dishes[d] })), { value: "none", name: t.noStarter }]}
                   />
                 )}
                 <Choice
@@ -240,14 +345,31 @@ export default function MenuPage() {
             );
           })}
 
+          {askRsvp && invite.attending && (
+            <div className="field">
+              <label htmlFor="message">{t.message}</label>
+              <textarea
+                id="message"
+                rows={3}
+                maxLength={500}
+                value={invite.message}
+                onChange={(e) => setInviteField("message")(e.target.value)}
+              />
+            </div>
+          )}
+
           {error && <p className="rsvp__error">{error}</p>}
-          <button type="submit" className="btn btn--gold">
-            {t.review}
-          </button>
-          <p className="menu-page__muted menu-page__small">
-            {t.countHelp}
-            {contact}.
-          </p>
+          {(!askRsvp || invite.attending) && (
+            <button type="submit" className="btn btn--gold" disabled={saving}>
+              {absent ? (saving ? t.confirming : t.sendNo) : t.review}
+            </button>
+          )}
+          {!askRsvp && (
+            <p className="menu-page__muted menu-page__small">
+              {t.countHelp}
+              {contact}.
+            </p>
+          )}
         </form>
       </>
     );

@@ -5,8 +5,7 @@
 // contraintes CHECK de supabase/menus.sql : ne pas les renommer.
 // ---------------------------------------------------------------------------
 
-// Date limite (4 octobre) : affichée aux invités, pas bloquante, pour que
-// les retardataires et les menus rouverts par les mariés restent possibles.
+// Pas de date limite affichée (décision du 04/10) : « dès que possible ».
 // Le gâteau se choisit sur place : pas de champ dans le formulaire.
 
 export const STARTERS = ["veau", "gaspacho"];
@@ -15,7 +14,6 @@ export const CHILD_MAINS = ["poulet", "poisson"];
 
 export const menuDict = {
   fr: {
-    deadline: "dimanche 4 octobre",
     dishes: {
       veau: {
         name: "Noix de veau façon carpaccio",
@@ -45,13 +43,14 @@ export const menuDict = {
       kicker: "Samedi 10 octobre 2026",
       title: "Votre menu",
       intro: (name) => `Bonjour ${name}, choisissez le repas de chaque personne de votre foyer.`,
-      introDeadline: (d) => `Merci de répondre avant le ${d}.`,
+      introDeadline: "Merci de nous répondre dès que possible.",
       lockNote: "Une fois confirmé, votre choix est définitif : nous le transmettons au restaurant.",
       adult: (n) => `Adulte ${n}`,
       child: (n) => `Enfant ${n}`,
       personName: "Prénom",
       personNamePh: "Prénom de la personne",
       starter: "Entrée",
+      noStarter: "Sans entrée",
       main: "Plat",
       childMain: "Menu enfant",
       cheese: "Assiette de fromages régionaux",
@@ -76,10 +75,29 @@ export const menuDict = {
       loading: "Chargement…",
       or: " ou ",
       cheeseLine: (yes) => (yes ? "Fromages : oui" : "Fromages : non"),
+      // Late invites (ask_rsvp): presence, diet and a note on the same page.
+      inviteTitle: "Votre réponse",
+      inviteIntro: (name) =>
+        `Bonjour ${name}, nous serions ravis de vous compter parmi nous. Dites-nous si vous serez des nôtres et, si oui, choisissez le menu de chacun.`,
+      siteLink: "Programme et infos pratiques",
+      attending: "Serez-vous des nôtres le samedi 10 octobre ?",
+      attendingYes: "Avec plaisir",
+      attendingNo: "Malheureusement non",
+      adultsLabel: "Adultes",
+      childrenLabel: "Enfants (menu enfant)",
+      dietary: "Régime alimentaire / allergies",
+      dietaryPh: "Optionnel",
+      message: "Un mot pour les mariés (optionnel)",
+      sendNo: "Envoyer ma réponse",
+      errorCount: "Indiquez au moins une personne.",
+      reviewDietary: "Régime / allergies : ",
+      reviewMessage: "Votre mot : ",
+      absentKicker: "Merci",
+      absentTitle: "Merci pour votre réponse",
+      absentText: "Vous nous manquerez ! Si vos plans changent, écrivez-nous : ",
     },
   },
   es: {
-    deadline: "domingo 4 de octubre",
     dishes: {
       veau: {
         name: "Carpaccio de nuez de ternera",
@@ -109,13 +127,14 @@ export const menuDict = {
       kicker: "Sábado 10 de octubre de 2026",
       title: "Su menú",
       intro: (name) => `Hola ${name}, elijan la comida de cada persona de su familia.`,
-      introDeadline: (d) => `Por favor respondan antes del ${d}.`,
+      introDeadline: "Por favor respondan lo antes posible.",
       lockNote: "Una vez confirmada, su elección es definitiva: la enviamos al restaurante.",
       adult: (n) => `Adulto ${n}`,
       child: (n) => `Niño ${n}`,
       personName: "Nombre",
       personNamePh: "Nombre de la persona",
       starter: "Entrada",
+      noStarter: "Sin entrada",
       main: "Plato fuerte",
       childMain: "Menú infantil",
       cheese: "Tabla de quesos regionales",
@@ -140,6 +159,25 @@ export const menuDict = {
       loading: "Cargando…",
       or: " o ",
       cheeseLine: (yes) => (yes ? "Quesos: sí" : "Quesos: no"),
+      inviteTitle: "Su respuesta",
+      inviteIntro: (name) =>
+        `Hola ${name}, nos encantaría contar con ustedes. Cuéntennos si podrán acompañarnos y, si es así, elijan el menú de cada uno.`,
+      siteLink: "Programa e información práctica",
+      attending: "¿Nos acompañarán el sábado 10 de octubre?",
+      attendingYes: "Con mucho gusto",
+      attendingNo: "Lamentablemente no",
+      adultsLabel: "Adultos",
+      childrenLabel: "Niños (menú infantil)",
+      dietary: "Restricciones alimentarias / alergias",
+      dietaryPh: "Opcional",
+      message: "Unas palabras para los novios (opcional)",
+      sendNo: "Enviar mi respuesta",
+      errorCount: "Indiquen al menos una persona.",
+      reviewDietary: "Restricciones / alergias: ",
+      reviewMessage: "Sus palabras: ",
+      absentKicker: "Gracias",
+      absentTitle: "Gracias por su respuesta",
+      absentText: "¡Los vamos a extrañar! Si sus planes cambian, escríbannos: ",
     },
   },
 };

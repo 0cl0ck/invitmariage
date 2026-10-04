@@ -19,8 +19,13 @@ import { menuDict, STARTERS, ADULT_MAINS, CHILD_MAINS } from "../content/menu.js
 import { wedding } from "../content/variants.js";
 
 const { dishes } = menuDict.fr;
+// Adults may skip the starter (null in the database, "none" in the forms).
+const starterName = (starter) => (starter && starter !== "none" ? dishes[starter].name : "Sans entrée");
 const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+
+/** Late invite (ask_rsvp) who answered « absent »: confirmed with nobody. */
+const isAbsent = (h) => Boolean(h.ask_rsvp && h.confirmed_at && h.adults + h.children === 0);
 
 /** RSVP « oui » (latest per email) that have no menu household yet. */
 function missingFromRsvp(rsvps, households) {
@@ -50,11 +55,11 @@ function toCsv(households) {
     const text = String(v ?? "");
     return `"${(/^[=+\-@\t\r]/.test(text) ? "'" + text : text).replace(/"/g, '""')}"`;
   };
-  const head = ["Foyer", "Personne", "Type", "Entrée", "Plat", "Fromage", "Email", "Confirmé le"];
+  const head = ["Foyer", "Personne", "Type", "Entrée", "Plat", "Fromage", "Allergie", "Email", "Confirmé le"];
   const lines = [];
   for (const h of households) {
     if (!h.confirmed_at) {
-      lines.push([h.name, "", `En attente (${h.adults} adulte(s), ${h.children} enfant(s))`, "", "", "", "", h.email, ""]);
+      lines.push([h.name, "", `En attente (${h.adults} adulte(s), ${h.children} enfant(s))`, "", "", "", "", "", h.email, ""]);
       continue;
     }
     for (const c of h.choices) {
@@ -62,9 +67,10 @@ function toCsv(households) {
         h.name,
         c.person_name,
         c.kind === "adult" ? "Adulte" : "Enfant",
-        c.starter ? dishes[c.starter].name : "",
+        c.kind === "adult" ? starterName(c.starter) : "",
         dishes[c.main].name,
         c.kind === "adult" ? (c.cheese ? "Oui" : "Non") : "",
+        c.allergy || "",
         h.email,
         fmtDate(h.confirmed_at),
       ]);
@@ -135,9 +141,16 @@ function EditForm({ household, onSave, onCancel }) {
 /** Current choices when confirmed (to change them), else one blank row per person. */
 function initialPeople(h) {
   if (h.confirmed_at && h.choices.length) {
-    return h.choices.map((c) => ({ person_name: c.person_name, kind: c.kind, starter: c.starter || "", main: c.main, cheese: c.cheese }));
+    return h.choices.map((c) => ({
+      person_name: c.person_name,
+      kind: c.kind,
+      starter: c.kind === "adult" ? c.starter || "none" : "",
+      main: c.main,
+      cheese: c.cheese,
+      allergy: c.allergy || "",
+    }));
   }
-  const make = (kind) => ({ person_name: "", kind, starter: "", main: "", cheese: null });
+  const make = (kind) => ({ person_name: "", kind, starter: "", main: "", cheese: null, allergy: "" });
   return [...Array.from({ length: h.adults }, () => make("adult")), ...Array.from({ length: h.children }, () => make("child"))];
 }
 
@@ -187,7 +200,12 @@ function ChooseForm({ household, busy, onSave, onCancel }) {
               <input id={`choose-${i}`} type="text" maxLength={60} value={p.person_name} onChange={(e) => setPerson(i, "person_name")(e.target.value)} />
             </div>
             {p.kind === "adult" && (
-              <ButtonGroup legend="Entrée" value={p.starter} onChange={setPerson(i, "starter")} options={STARTERS.map((d) => ({ value: d, label: dishes[d].name }))} />
+              <ButtonGroup
+                legend="Entrée"
+                value={p.starter}
+                onChange={setPerson(i, "starter")}
+                options={[...STARTERS.map((d) => ({ value: d, label: dishes[d].name })), { value: "none", label: "Sans entrée" }]}
+              />
             )}
             <ButtonGroup
               legend={p.kind === "adult" ? "Plat" : "Menu enfant"}
@@ -206,6 +224,17 @@ function ChooseForm({ household, busy, onSave, onCancel }) {
                 ]}
               />
             )}
+            <div className="field">
+              <label htmlFor={`choose-allergy-${i}`}>Allergie / régime (pour le restaurant)</label>
+              <input
+                id={`choose-allergy-${i}`}
+                type="text"
+                maxLength={120}
+                value={p.allergy}
+                placeholder="Vide si aucune"
+                onChange={(e) => setPerson(i, "allergy")(e.target.value)}
+              />
+            </div>
           </section>
         ))}
         {showErrors && missing.length > 0 && <p className="rsvp__error">Il manque des choix pour : {missing.join(", ")}.</p>}
@@ -222,19 +251,21 @@ function ChooseForm({ household, busy, onSave, onCancel }) {
   );
 }
 
-function Totals({ households }) {
+export function Totals({ households }) {
   const t = useMemo(() => {
     const count = Object.fromEntries([...STARTERS, ...ADULT_MAINS, ...CHILD_MAINS].map((k) => [k, 0]));
     let cheese = 0;
+    let noStarter = 0;
     for (const h of households) {
       if (!h.confirmed_at) continue;
       for (const c of h.choices) {
         if (c.starter) count[c.starter] += 1;
+        else if (c.kind === "adult") noStarter += 1;
         count[c.main] += 1;
         if (c.cheese) cheese += 1;
       }
     }
-    return { count, cheese };
+    return { count, cheese, noStarter };
   }, [households]);
 
   const group = (title, keys, suffix = () => "") => (
@@ -251,7 +282,19 @@ function Totals({ households }) {
 
   return (
     <div className="admin-panel menu-totals">
-      {group("Entrées", STARTERS)}
+      <div className="menu-totals__group">
+        <p className="menu-totals__title">Entrées</p>
+        {STARTERS.map((k) => (
+          <p key={k} className="menu-totals__line">
+            <strong>{t.count[k]}</strong> {dishes[k].name}
+          </p>
+        ))}
+        {t.noStarter > 0 && (
+          <p className="menu-totals__line">
+            <strong>{t.noStarter}</strong> Sans entrée
+          </p>
+        )}
+      </div>
       {group("Plats", ADULT_MAINS)}
       {group("Menu enfant", CHILD_MAINS)}
       <div className="menu-totals__group">
@@ -273,6 +316,7 @@ function MenusDashboard({ demo, onSignOut }) {
   const [notice, setNotice] = useState("");
   const [editing, setEditing] = useState(null);
   const [choosing, setChoosing] = useState(null);
+  const [inviting, setInviting] = useState(false);
 
   const load = useCallback(() => {
     return Promise.all([listHouseholds(), listResponses()])
@@ -307,7 +351,8 @@ function MenusDashboard({ demo, onSignOut }) {
   const missing = useMemo(() => missingFromRsvp(rsvps, households), [rsvps, households]);
   const toSend = households.filter((h) => h.email && !h.request_sent_at && !h.confirmed_at);
   const toRemind = households.filter((h) => h.email && h.request_sent_at && !h.confirmed_at);
-  const confirmed = households.filter((h) => h.confirmed_at);
+  const absent = households.filter(isAbsent);
+  const confirmed = households.filter((h) => h.confirmed_at && !isAbsent(h));
   const people = households.reduce((s, h) => s + h.adults + h.children, 0);
   const noEmail = households.filter((h) => !h.email && !h.confirmed_at).length;
 
@@ -337,6 +382,7 @@ function MenusDashboard({ demo, onSignOut }) {
   };
 
   const status = (h) => {
+    if (isAbsent(h)) return `✗ Absent (réponse du ${fmtDate(h.confirmed_at)})`;
     if (h.confirmed_at) return `✓ Confirmé le ${fmtDate(h.confirmed_at)}`;
     if (h.request_sent_at) return `Envoyé le ${fmtDate(h.request_sent_at)}`;
     return h.email ? "Pas encore envoyé" : "Sans email : lien à envoyer";
@@ -349,7 +395,8 @@ function MenusDashboard({ demo, onSignOut }) {
           <span className="admin-stat"><strong>{households.length}</strong> foyers</span>
           <span className="admin-stat"><strong>{people}</strong> personnes</span>
           <span className="admin-stat"><strong>{confirmed.length}</strong> confirmés</span>
-          <span className="admin-stat"><strong>{households.length - confirmed.length}</strong> en attente</span>
+          {absent.length > 0 && <span className="admin-stat"><strong>{absent.length}</strong> absent(s)</span>}
+          <span className="admin-stat"><strong>{households.length - confirmed.length - absent.length}</strong> en attente</span>
           {noEmail > 0 && <span className="admin-stat"><strong>{noEmail}</strong> sans email</span>}
         </div>
         <div className="admin__actions">
@@ -363,6 +410,17 @@ function MenusDashboard({ demo, onSignOut }) {
               Créer les liens manquants ({missing.length})
             </button>
           )}
+          <button
+            className="btn btn--ghost"
+            disabled={busy}
+            onClick={() => {
+              setEditing(null);
+              setChoosing(null);
+              setInviting((open) => !open);
+            }}
+          >
+            + Invité de dernière minute
+          </button>
           <button className="btn btn--gold" disabled={busy || !toSend.length} onClick={() => send(toSend, "Première demande")}>
             Envoyer la demande ({toSend.length})
           </button>
@@ -392,6 +450,27 @@ function MenusDashboard({ demo, onSignOut }) {
       )}
 
       <Totals households={households} />
+
+      {inviting && (
+        <div className="admin-panel">
+          <h3 className="admin-panel__title">Inviter quelqu'un à la dernière minute</h3>
+          <p className="admin-panel__hint">
+            Son lien lui demande s'il vient, combien ils seront (votre nombre n'est qu'une proposition), régime ou allergies, un mot,
+            puis le menu de chacun. Sa réponse arrive aussi dans les réponses RSVP. Ensuite : la langue sur sa ligne, puis « Envoyer »
+            (ou « Copier le lien » s'il n'a pas d'email).
+          </p>
+          <EditForm
+            household={{ name: "", email: null, adults: 1, children: 0, confirmed_at: null }}
+            onCancel={() => setInviting(false)}
+            onSave={(patch) =>
+              run(async () => {
+                await createHouseholds([{ ...patch, ask_rsvp: true }]);
+                setInviting(false);
+              }, `${patch.name} ajouté(e) : choisissez sa langue puis « Envoyer » sur sa ligne.`)
+            }
+          />
+        </div>
+      )}
 
       {editing && (
         <div className="admin-panel">
@@ -449,10 +528,11 @@ function MenusDashboard({ demo, onSignOut }) {
             </thead>
             <tbody>
               {households.map((h) => (
-                <tr key={h.id} className={h.confirmed_at ? "is-present" : ""}>
+                <tr key={h.id} className={isAbsent(h) ? "is-absent" : h.confirmed_at ? "is-present" : ""}>
                   <td>
                     <span className="admin-name">{h.name}</span>
                     <span className="admin-email">{h.email || "Sans email"}</span>
+                    {h.ask_rsvp && <span className="admin-tag">Dernière minute</span>}
                   </td>
                   <td>
                     {h.adults} ad.{h.children ? ` + ${h.children} enf.` : ""}
@@ -474,7 +554,7 @@ function MenusDashboard({ demo, onSignOut }) {
                     {h.choices.map((c) => (
                       <span key={c.id || c.position}>
                         <strong>{c.person_name}</strong> :{" "}
-                        {[c.starter && dishes[c.starter].name, dishes[c.main].name, c.kind === "adult" && (c.cheese ? "fromage" : "sans fromage")]
+                        {[c.kind === "adult" && starterName(c.starter), dishes[c.main].name, c.kind === "adult" && (c.cheese ? "fromage" : "sans fromage"), c.allergy && `⚠️ ${c.allergy}`]
                           .filter(Boolean)
                           .join(" · ")}
                       </span>
@@ -492,25 +572,45 @@ function MenusDashboard({ demo, onSignOut }) {
                         Copier le lien
                       </button>
                     )}
-                    <button
-                      type="button"
-                      className="linklike"
-                      disabled={busy}
-                      onClick={() => {
-                        setEditing(null);
-                        setChoosing(h);
-                      }}
-                      title="Remplir les menus à leur place (aucun email envoyé)"
-                    >
-                      {h.confirmed_at ? "Changer les menus" : "Choisir pour eux"}
-                    </button>
+                    {!h.confirmed_at && (
+                      <button
+                        type="button"
+                        className="linklike"
+                        disabled={busy}
+                        title="M'envoyer cet email à moi : rien n'est envoyé à l'invité"
+                        onClick={() =>
+                          run(
+                            () => sendRequests([h.id], { preview: true }),
+                            (r) => `Aperçu de l'email de ${h.name} envoyé à ${r.to || "votre adresse"} (rien n'est parti chez l'invité).`,
+                          )
+                        }
+                      >
+                        Aperçu
+                      </button>
+                    )}
+                    {/* A late invite answers presence on its own link (or ours, opened via « Copier le lien »). */}
+                    {(h.ask_rsvp ? h.confirmed_at && !isAbsent(h) : true) && (
+                      <button
+                        type="button"
+                        className="linklike"
+                        disabled={busy}
+                        onClick={() => {
+                          setEditing(null);
+                          setInviting(false);
+                          setChoosing(h);
+                        }}
+                        title="Remplir les menus à leur place (aucun email envoyé)"
+                      >
+                        {h.confirmed_at ? "Changer les menus" : "Choisir pour eux"}
+                      </button>
+                    )}
                     {h.confirmed_at && (
                       <button
                         type="button"
                         className="linklike"
                         disabled={busy}
                         onClick={() =>
-                          window.confirm(`Rouvrir le menu de ${h.name} ? Ses choix sont effacés et son lien fonctionne à nouveau.`) &&
+                          window.confirm(`Rouvrir le menu de ${h.name} ? Ses choix (et les allergies corrigées) sont effacés et son lien fonctionne à nouveau.`) &&
                           run(() => reopenHousehold(h.id), `Menu de ${h.name} rouvert.`)
                         }
                       >
@@ -523,6 +623,7 @@ function MenusDashboard({ demo, onSignOut }) {
                       disabled={busy}
                       onClick={() => {
                         setChoosing(null);
+                        setInviting(false);
                         setEditing(h);
                       }}
                       aria-label={`Modifier ${h.name}`}

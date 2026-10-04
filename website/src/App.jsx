@@ -5,6 +5,7 @@ import InvitationPage from "./pages/InvitationPage.jsx";
 import AdminPage from "./components/AdminPage.jsx";
 import ChecklistPage from "./components/ChecklistPage.jsx";
 import MenusAdminPage from "./components/MenusAdminPage.jsx";
+import RestaurantPage from "./components/RestaurantPage.jsx";
 import MenuPage from "./pages/MenuPage.jsx";
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/espace-maries" element={<AdminPage />} />
           <Route path="/espace-maries/checklist" element={<ChecklistPage />} />
           <Route path="/espace-maries/menus" element={<MenusAdminPage />} />
+          <Route path="/espace-maries/restaurant" element={<RestaurantPage />} />
           {/* Lien personnel envoyé à chaque foyer pour choisir son menu. */}
           <Route path="/menu/:token" element={<MenuPage />} />
           {/* Anciens liens (/ceremonie, /vin-dhonneur…) → invitation unique. */}
