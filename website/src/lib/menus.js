@@ -37,6 +37,8 @@ function demoSave(db) {
 }
 // "none" = « Sans entrée » in the forms; stored as null (as the server does).
 const storedStarter = (starter) => (starter && starter !== "none" ? starter : null);
+// Same for « Pas de menu enfant » (tout-petits).
+const storedMain = (main) => (main && main !== "none" ? main : null);
 function newToken() {
   return crypto.randomUUID().replace(/-/g, "");
 }
@@ -79,7 +81,7 @@ export async function confirmMenu(token, choices) {
     const h = db.households.find((x) => x.token === token);
     if (!h) throw new MenuError("not-found");
     if (h.confirmed_at) throw new MenuError("already-confirmed");
-    db.choices.push(...choices.map((c, i) => ({ ...c, starter: storedStarter(c.starter), household_id: h.id, position: i })));
+    db.choices.push(...choices.map((c, i) => ({ ...c, starter: storedStarter(c.starter), main: storedMain(c.main), household_id: h.id, position: i })));
     h.confirmed_at = new Date().toISOString();
     demoSave(db);
     return { household: { ...h, confirmedAt: h.confirmed_at, confirmationSent: Boolean(h.email) }, choices };
@@ -106,7 +108,7 @@ export async function answerInvite(token, answer) {
     const yes = answer.attending === "yes";
     const choices = yes ? answer.choices : [];
     db.choices = db.choices.filter((c) => c.household_id !== h.id);
-    db.choices.push(...choices.map((c, i) => ({ ...c, starter: storedStarter(c.starter), household_id: h.id, position: i })));
+    db.choices.push(...choices.map((c, i) => ({ ...c, starter: storedStarter(c.starter), main: storedMain(c.main), household_id: h.id, position: i })));
     Object.assign(h, { adults: yes ? answer.adults : 0, children: yes ? answer.children : 0, confirmed_at: new Date().toISOString() });
     demoSave(db);
     return {
@@ -242,7 +244,7 @@ export async function chooseForHousehold(id, choices) {
     const h = db.households.find((x) => x.id === id);
     if (!h) throw new MenuError("not-found");
     db.choices = db.choices.filter((c) => c.household_id !== id);
-    db.choices.push(...choices.map((c, i) => ({ ...c, starter: storedStarter(c.starter), household_id: id, position: i })));
+    db.choices.push(...choices.map((c, i) => ({ ...c, starter: storedStarter(c.starter), main: storedMain(c.main), household_id: id, position: i })));
     Object.assign(h, { confirmed_at: new Date().toISOString(), confirmation_sent_at: null });
     demoSave(db);
     return;
