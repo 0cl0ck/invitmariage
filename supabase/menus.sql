@@ -141,4 +141,5 @@ alter table public.menu_choices drop column if exists cake;
 --    supabase/2026-10-04-invites-derniere-minute.sql (ask_rsvp + answer_invite)
 --    supabase/2026-10-04-entree-facultative-allergies.sql (entrée facultative,
 --    allergie par personne, confirm_menu qui la recopie)
+--    supabase/2026-10-04-menu-enfant-facultatif.sql (menu enfant facultatif)
 -- ---------------------------------------------------------------------------

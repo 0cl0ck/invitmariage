@@ -68,7 +68,7 @@ function toCsv(households) {
         c.person_name,
         c.kind === "adult" ? "Adulte" : "Enfant",
         c.kind === "adult" ? starterName(c.starter) : "",
-        dishes[c.main].name,
+        c.main ? dishes[c.main].name : "Pas de menu enfant",
         c.kind === "adult" ? (c.cheese ? "Oui" : "Non") : "",
         c.allergy || "",
         h.email,
@@ -145,7 +145,7 @@ function initialPeople(h) {
       person_name: c.person_name,
       kind: c.kind,
       starter: c.kind === "adult" ? c.starter || "none" : "",
-      main: c.main,
+      main: c.main || (c.kind === "child" ? "none" : ""),
       cheese: c.cheese,
       allergy: c.allergy || "",
     }));
@@ -211,7 +211,11 @@ function ChooseForm({ household, busy, onSave, onCancel }) {
               legend={p.kind === "adult" ? "Plat" : "Menu enfant"}
               value={p.main}
               onChange={setPerson(i, "main")}
-              options={(p.kind === "adult" ? ADULT_MAINS : CHILD_MAINS).map((d) => ({ value: d, label: dishes[d].name }))}
+              options={
+                p.kind === "adult"
+                  ? ADULT_MAINS.map((d) => ({ value: d, label: dishes[d].name }))
+                  : [...CHILD_MAINS.map((d) => ({ value: d, label: dishes[d].name })), { value: "none", label: "Pas de menu enfant" }]
+              }
             />
             {p.kind === "adult" && (
               <ButtonGroup
@@ -256,16 +260,18 @@ export function Totals({ households }) {
     const count = Object.fromEntries([...STARTERS, ...ADULT_MAINS, ...CHILD_MAINS].map((k) => [k, 0]));
     let cheese = 0;
     let noStarter = 0;
+    let noChildMenu = 0;
     for (const h of households) {
       if (!h.confirmed_at) continue;
       for (const c of h.choices) {
         if (c.starter) count[c.starter] += 1;
         else if (c.kind === "adult") noStarter += 1;
-        count[c.main] += 1;
+        if (c.main) count[c.main] += 1;
+        else noChildMenu += 1;
         if (c.cheese) cheese += 1;
       }
     }
-    return { count, cheese, noStarter };
+    return { count, cheese, noStarter, noChildMenu };
   }, [households]);
 
   const group = (title, keys, suffix = () => "") => (
@@ -296,7 +302,19 @@ export function Totals({ households }) {
         )}
       </div>
       {group("Plats", ADULT_MAINS)}
-      {group("Menu enfant", CHILD_MAINS)}
+      <div className="menu-totals__group">
+        <p className="menu-totals__title">Menu enfant</p>
+        {CHILD_MAINS.map((k) => (
+          <p key={k} className="menu-totals__line">
+            <strong>{t.count[k]}</strong> {dishes[k].name}
+          </p>
+        ))}
+        {t.noChildMenu > 0 && (
+          <p className="menu-totals__line">
+            <strong>{t.noChildMenu}</strong> Sans menu enfant
+          </p>
+        )}
+      </div>
       <div className="menu-totals__group">
         <p className="menu-totals__title">Fromages</p>
         <p className="menu-totals__line">
@@ -554,7 +572,7 @@ function MenusDashboard({ demo, onSignOut }) {
                     {h.choices.map((c) => (
                       <span key={c.id || c.position}>
                         <strong>{c.person_name}</strong> :{" "}
-                        {[c.kind === "adult" && starterName(c.starter), dishes[c.main].name, c.kind === "adult" && (c.cheese ? "fromage" : "sans fromage"), c.allergy && `⚠️ ${c.allergy}`]
+                        {[c.kind === "adult" && starterName(c.starter), c.main ? dishes[c.main].name : "pas de menu enfant", c.kind === "adult" && (c.cheese ? "fromage" : "sans fromage"), c.allergy && `⚠️ ${c.allergy}`]
                           .filter(Boolean)
                           .join(" · ")}
                       </span>

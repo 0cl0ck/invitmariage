@@ -78,6 +78,11 @@ Gemini : bloqué plus de 25 min sans sortie, arrêté.
 - Décision d'Hugo : aucune date affichée, « dès que possible » partout (page du lien menu, email de demande de menu, section RSVP du site d'invitation que les retardataires voient via « Programme et infos pratiques »). `rsvpDeadline` reste dans `variants.js`, inutilisé côté invités.
 - Bouton « Aperçu » sur chaque ligne non confirmée de `/espace-maries/menus` : `POST /api/menu-send { ids, preview: true }` envoie le même email (invitation ou demande) au marié connecté uniquement, objet « [Aperçu] … », sans rien marquer comme envoyé. Le lien est celui du foyer : l'ouvrir pour voir la page, ne pas confirmer à sa place.
 
+## Menu enfant facultatif + texte de l'invitation (04/10, après le merge de la PR #3)
+- Vérifié le 04/10 : les migrations 1 et 2 sont appliquées en prod (colonnes `ask_rsvp` et `allergy` présentes via l'API publique, sans lire de données).
+- « Pas de menu enfant » pour les tout-petits (invités et mariés), stocké `main = null` ; un adulte garde un plat obligatoire (`main is not null` explicite dans la contrainte : une CHECK évaluée à NULL passe). Migration `supabase/2026-10-04-menu-enfant-facultatif.sql` à coller AVANT le merge, sinon un tout-petit sans menu fait une erreur.
+- Email d'invitation : « Dites-nous si vous serez présents, vos éventuels régimes ou allergies, et choisissez le menu de chacun. » (plus de « Sur une seule page », ni « Cela prend deux minutes »), ES équivalent.
+
 ## Mise en prod du 04/10 (ordre obligatoire)
 1. Coller dans l'éditeur SQL Supabase, dans cet ordre : `supabase/2026-10-04-invites-derniere-minute.sql` puis `supabase/2026-10-04-entree-facultative-allergies.sql` (idempotents). Contrôle : `select ask_rsvp from menu_households limit 1; select allergy from menu_choices limit 1;` ne renvoient pas d'erreur.
 2. Merge de la PR dans `main` = déploiement Vercel de production.

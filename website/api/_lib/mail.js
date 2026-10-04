@@ -26,7 +26,7 @@ const copy = {
     inviteSubject: "Notre mariage le 10 octobre : votre réponse et votre menu",
     inviteBody: [
       "Nous serions ravis de vous compter parmi nous le samedi 10 octobre à Dunkerque !",
-      "Sur une seule page, dites-nous si vous serez présents, vos éventuels régimes ou allergies, et choisissez le menu de chacun (entrée, plat, fromage). Cela prend deux minutes.",
+      "Dites-nous si vous serez présents, vos éventuels régimes ou allergies, et choisissez le menu de chacun.",
     ],
     inviteButton: "Répondre et choisir notre menu",
     inviteDeadline: "Le mariage approche : merci de nous répondre dès que possible.",
@@ -49,7 +49,7 @@ const copy = {
     inviteSubject: "Nuestra boda el 10 de octubre: su respuesta y su menú",
     inviteBody: [
       "¡Nos encantaría contar con ustedes el sábado 10 de octubre en Dunkerque!",
-      "En una sola página, cuéntennos si podrán asistir, si tienen alguna restricción alimentaria o alergia, y elijan el menú de cada uno (entrada, plato fuerte, quesos). Toma dos minutos.",
+      "Cuéntennos si podrán asistir, si tienen alguna restricción alimentaria o alergia, y elijan el menú de cada uno.",
     ],
     inviteButton: "Responder y elegir nuestro menú",
     inviteDeadline: "La boda se acerca: por favor respondan lo antes posible.",
@@ -76,7 +76,7 @@ export function recapLines(choices, lang) {
     const parts =
       c.kind === "adult"
         ? [c.starter ? dishes[c.starter]?.name : ui.noStarter, dishes[c.main]?.name, ui.cheeseLine(c.cheese)]
-        : [dishes[c.main]?.name];
+        : [c.main ? dishes[c.main]?.name : ui.noChildMenu];
     return { who: c.person_name, parts };
   });
 }

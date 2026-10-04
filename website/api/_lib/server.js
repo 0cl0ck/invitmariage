@@ -57,7 +57,8 @@ export function sanitizeChoices(raw) {
     kind: c?.kind === "child" ? "child" : "adult",
     // "none" = « Sans entrée » in the forms, stored as null.
     starter: c?.kind === "child" || c?.starter === "none" ? "" : String(c?.starter || ""),
-    main: String(c?.main || ""),
+    // "none" = « Pas de menu enfant » (tout-petits), stored as null.
+    main: c?.kind === "child" && c?.main === "none" ? "" : String(c?.main || ""),
     cheese: c?.kind === "child" ? false : Boolean(c?.cheese),
     allergy: String(c?.allergy || "").trim().slice(0, 120),
   }));

@@ -66,7 +66,7 @@ function Recap({ people, dishes, t }) {
               {dishes[p.starter]?.name || t.noStarter} · {dishes[p.main]?.name} · {t.cheeseLine(p.cheese)}
             </span>
           ) : (
-            <span>{dishes[p.main]?.name}</span>
+            <span>{dishes[p.main]?.name || t.noChildMenu}</span>
           )}
         </li>
       ))}
@@ -327,7 +327,11 @@ export default function MenuPage() {
                   value={p.main}
                   onChange={setPerson(i, "main")}
                   invalid={showErrors && !p.main}
-                  options={(p.kind === "adult" ? ADULT_MAINS : CHILD_MAINS).map((d) => ({ value: d, ...dishes[d] }))}
+                  options={
+                    p.kind === "adult"
+                      ? ADULT_MAINS.map((d) => ({ value: d, ...dishes[d] }))
+                      : [...CHILD_MAINS.map((d) => ({ value: d, ...dishes[d] })), { value: "none", name: t.noChildMenu }]
+                  }
                 />
                 {p.kind === "adult" && (
                   <Choice

@@ -15,16 +15,19 @@ const { dishes } = menuDict.fr;
 
 const PICTO = { veau: "🥩", gaspacho: "🥣", carrelet: "🐟", agneau: "🐑", burrata: "🌱", poulet: "🍗", poisson: "🐠" };
 const NO_STARTER = "✕ Sans entrée";
+const NO_CHILD_MENU = "✕ Pas de menu enfant";
 
 const dish = (code) => `${PICTO[code]} ${dishes[code].name}`;
 const starterOf = (c) => (c.starter ? dish(c.starter) : NO_STARTER);
+const mainOf = (c) => (c.main ? dish(c.main) : NO_CHILD_MENU);
 const cheeseOf = (c) => (c.cheese ? "🧀 Fromage" : "Sans fromage");
-const menuLine = (c) => (c.kind === "adult" ? [starterOf(c), dish(c.main), cheeseOf(c)] : [`Enfant : ${dish(c.main)}`]).join(" · ");
+const menuLine = (c) => (c.kind === "adult" ? [starterOf(c), mainOf(c), cheeseOf(c)] : [`Enfant : ${mainOf(c)}`]).join(" · ");
 
 const LEGEND = [
   ...[...STARTERS, ...ADULT_MAINS].map(dish),
   NO_STARTER,
   ...CHILD_MAINS.map((k) => `${dish(k)} (enfant)`),
+  NO_CHILD_MENU,
   "🧀 Fromage",
   "⚠️ Allergie",
 ].join(" · ");
@@ -228,7 +231,7 @@ function RestaurantDashboard({ demo, onSignOut }) {
                       {g.kind === "child" ? " (enfant)" : ""}
                     </td>
                     <td>{g.kind === "adult" ? starterOf(g) : "·"}</td>
-                    <td>{dish(g.main)}</td>
+                    <td>{mainOf(g)}</td>
                     <td>{g.kind === "adult" ? cheeseOf(g) : "·"}</td>
                     <td>
                       <input
