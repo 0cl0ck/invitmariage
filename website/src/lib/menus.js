@@ -259,22 +259,29 @@ export async function chooseForHousehold(id, choices) {
 
 const STALE_CHOICE = "les menus de ce foyer ont changé entre-temps : cliquez sur « Rafraîchir » puis recommencez.";
 
-/** Mariés: correct one person's allergy / diet for the restaurant list. */
-export async function updateAllergy(choice, allergy) {
-  const value = String(allergy || "").trim().slice(0, 120) || null;
+// Fields the mariés may correct from the restaurant list, with their max length.
+const CHOICE_FIELDS = { person_name: 60, allergy: 120 };
+
+/** Mariés: correct one person's first name or allergy (restaurant list). */
+export async function updateChoice(choice, patch) {
+  const clean = {};
+  for (const [key, max] of Object.entries(CHOICE_FIELDS)) {
+    if (key in patch) clean[key] = String(patch[key] || "").trim().slice(0, max) || null;
+  }
+  if ("person_name" in clean && !clean.person_name) throw new Error("le prénom ne peut pas être vide.");
   if (menuMode === "local") {
     const db = demoLoad();
     const c = db.choices.find((x) => x.household_id === choice.household_id && x.position === choice.position);
     if (!c) throw new Error(STALE_CHOICE);
-    c.allergy = value;
+    Object.assign(c, clean);
     demoSave(db);
-    return value;
+    return clean;
   }
   // Menus changed meanwhile (new rows): 0 row updated must not look like a success.
-  const { data, error } = await supabase.from("menu_choices").update({ allergy: value }).eq("id", choice.id).select("id");
+  const { data, error } = await supabase.from("menu_choices").update(clean).eq("id", choice.id).select("id");
   if (error) throw error;
   if (!data?.length) throw new Error(STALE_CHOICE);
-  return value;
+  return clean;
 }
 
 export function menuUrl(h) {

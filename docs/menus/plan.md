@@ -83,6 +83,11 @@ Gemini : bloqué plus de 25 min sans sortie, arrêté.
 - « Pas de menu enfant » pour les tout-petits (invités et mariés), stocké `main = null` ; un adulte garde un plat obligatoire (`main is not null` explicite dans la contrainte : une CHECK évaluée à NULL passe). Migration `supabase/2026-10-04-menu-enfant-facultatif.sql` à coller AVANT le merge, sinon un tout-petit sans menu fait une erreur.
 - Email d'invitation : « Dites-nous si vous serez présents, vos éventuels régimes ou allergies, et choisissez le menu de chacun. » (plus de « Sur une seule page », ni « Cela prend deux minutes »), ES équivalent.
 
+## PDF restaurant : prénoms seulement (04/10, après le merge de la PR #4)
+- Demande d'Hugo : pas de nom de famille sur le PDF envoyé au restaurant. À l'impression : plus de colonne « Foyer », plus de nom de foyer sur les cartes allergies, les foyers sans menu deviennent « N personne(s) n'ont pas encore choisi leur menu ». À l'écran, les noms de foyer restent (pour corriger).
+- Prénoms en double signalés à l'écran (et avant l'impression) : ajouter une initiale dans la colonne « Prénom » pour que la cuisine ne confonde pas deux « Marie ».
+- 05/10 : prénom corrigeable directement dans la liste (comme l'allergie, `updateChoice`), prénoms en plusieurs mots signalés (nom de famille possible). Fiche allergies en tableau compact (Prénom · Allergie · Entrée · Plat · Fromage), noms de plats courts, pictos dans une colonne de largeur fixe (alignés), légende en grille : tient sur une page A4 (vérifié avec 30 allergies, mode dense au-delà de 22). Liste complète à colonnes fixes : un plat par ligne.
+
 ## Mise en prod du 04/10 (ordre obligatoire)
 1. Coller dans l'éditeur SQL Supabase, dans cet ordre : `supabase/2026-10-04-invites-derniere-minute.sql` puis `supabase/2026-10-04-entree-facultative-allergies.sql` (idempotents). Contrôle : `select ask_rsvp from menu_households limit 1; select allergy from menu_choices limit 1;` ne renvoient pas d'erreur.
 2. Merge de la PR dans `main` = déploiement Vercel de production.

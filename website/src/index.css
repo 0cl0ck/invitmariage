@@ -1769,32 +1769,40 @@ button {
 .resto-tip {
   margin: 0.9rem 0 1.5rem;
 }
-.resto-cards {
+.resto-legend-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-  gap: 0.8rem;
-}
-.resto-card {
-  border: 2px solid #e6a07a;
-  border-radius: var(--radius-sm);
-  padding: 0.8rem 1rem;
-}
-.resto-card__name {
-  font-size: 1.15rem;
-  color: var(--color-cream);
-}
-.resto-card__name span {
-  font-size: 0.85rem;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.25rem 1.2rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  font-size: var(--fs-small);
   color: var(--color-text-muted);
 }
-.resto-card__allergy {
+/* Emoji in a fixed-width box: the names after it line up row after row. */
+.resto-item {
+  display: inline-flex;
+  align-items: baseline;
+}
+.resto-emoji {
+  flex: none;
+  display: inline-block;
+  width: 1.7em;
+  text-align: center;
+}
+.resto-allergy {
   color: #e6a07a;
   font-weight: 600;
-  font-size: 1.05rem;
-  margin: 0.2rem 0;
 }
-.resto-card__menu {
-  font-size: var(--fs-small);
+.resto-household {
+  display: block;
+  margin-left: 1.7em;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+.resto-input--person_name {
+  min-width: 8rem;
+  font-weight: 500;
 }
 .resto-input {
   width: 100%;
@@ -1845,21 +1853,79 @@ button {
   .resto-print-only {
     display: inline !important;
   }
-  .resto-print-head {
+  .resto-print-head,
+  .resto-print-count {
     display: block !important;
     font-size: 10pt;
     margin-bottom: 4mm;
   }
+  /* The allergy sheet: one A4 page (compact rows, legend in 3 columns). */
   .resto-sheet {
     break-after: page;
-  }
-  .resto-card {
     break-inside: avoid;
-    border: 2px solid #000 !important;
   }
-  .resto-card__allergy {
-    font-size: 13pt;
+  .resto-sheet .resto-title {
+    font-size: 15pt;
+    margin: 0 0 3mm;
+  }
+  .resto-legend-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5mm 4mm;
+    margin-bottom: 3mm;
+    font-size: 8.5pt;
+  }
+  .resto .resto-allergies {
+    table-layout: fixed;
+  }
+  .resto .resto-allergies th,
+  .resto .resto-allergies td {
+    padding: 1.2mm 1.5mm;
+    font-size: 10pt;
+    line-height: 1.25;
+  }
+  .resto .resto-allergies th {
+    font-size: 8.5pt;
+  }
+  .resto-allergies th:nth-child(1) {
+    width: 21%;
+  }
+  .resto-allergies th:nth-child(2) {
+    width: 31%;
+  }
+  .resto-allergies th:nth-child(3),
+  .resto-allergies th:nth-child(4) {
+    width: 18%;
+  }
+  /* Full list: fixed columns so each dish stays on one line (Foyer and RSVP are hidden). */
+  .resto .resto-list {
+    table-layout: fixed;
+  }
+  .resto-list th:nth-child(2) {
+    width: 18%;
+  }
+  .resto-list th:nth-child(3) {
+    width: 23%;
+  }
+  .resto-list th:nth-child(4) {
+    width: 20%;
+  }
+  .resto-list th:nth-child(5) {
+    width: 11%;
+  }
+  /* Many allergies: denser rows so the sheet stays on one page. */
+  .resto-sheet.is-dense .resto-allergies td {
+    padding: 0.7mm 1.2mm;
+    font-size: 9pt;
+  }
+  .resto-legend-grid {
+    line-height: 1.3;
+  }
+  .resto-allergy {
     text-decoration: underline;
+  }
+  .resto-tip {
+    margin: 3mm 0 0;
+    font-size: 9pt;
   }
   .resto .admin-table-wrap {
     overflow: visible;

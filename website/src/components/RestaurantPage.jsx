@@ -1,12 +1,13 @@
 // Espace mariés : liste pour le restaurant (/espace-maries/restaurant)
-// Une ligne par convive (prénom, entrée, plat, fromage, allergie corrigée par
-// les mariés), fiche allergies pour la cuisine et le service, impression.
-// Aide-mémoire : un picto par plat et ⚠️ pour une allergie, les mêmes sur la
-// fiche et sur les marque-places.
+// Une ligne par convive (prénom, entrée, plat, fromage, allergie), prénom et
+// allergie corrigés ici par les mariés, fiche allergies pour la cuisine et le
+// service, impression. Aide-mémoire : un picto par plat et ⚠️ pour une
+// allergie, les mêmes sur la fiche et sur les marque-places. Le PDF n'affiche
+// que les prénoms (pas de nom de foyer) ; la fiche allergies tient sur une page.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminGate } from "./AdminShell.jsx";
 import { Totals } from "./MenusAdminPage.jsx";
-import { listHouseholds, updateAllergy } from "../lib/menus.js";
+import { listHouseholds, updateChoice } from "../lib/menus.js";
 import { listResponses, latestByEmail } from "../lib/rsvp.js";
 import { menuDict, STARTERS, ADULT_MAINS, CHILD_MAINS } from "../content/menu.js";
 import { wedding } from "../content/variants.js";
@@ -14,23 +15,52 @@ import { wedding } from "../content/variants.js";
 const { dishes } = menuDict.fr;
 
 const PICTO = { veau: "🥩", gaspacho: "🥣", carrelet: "🐟", agneau: "🐑", burrata: "🌱", poulet: "🍗", poisson: "🐠" };
-const NO_STARTER = "✕ Sans entrée";
-const NO_CHILD_MENU = "✕ Pas de menu enfant";
-
-const dish = (code) => `${PICTO[code]} ${dishes[code].name}`;
-const starterOf = (c) => (c.starter ? dish(c.starter) : NO_STARTER);
-const mainOf = (c) => (c.main ? dish(c.main) : NO_CHILD_MENU);
-const cheeseOf = (c) => (c.cheese ? "🧀 Fromage" : "Sans fromage");
-const menuLine = (c) => (c.kind === "adult" ? [starterOf(c), mainOf(c), cheeseOf(c)] : [`Enfant : ${mainOf(c)}`]).join(" · ");
+// Short names: one line per guest on the printed sheets (the legend has the full ones).
+const SHORT = {
+  veau: "Carpaccio de veau",
+  gaspacho: "Gaspacho",
+  carrelet: "Carrelet",
+  agneau: "Agneau",
+  burrata: "Burrata (végé)",
+  poulet: "Poulet frites",
+  poisson: "Poisson",
+};
 
 const LEGEND = [
-  ...[...STARTERS, ...ADULT_MAINS].map(dish),
-  NO_STARTER,
-  ...CHILD_MAINS.map((k) => `${dish(k)} (enfant)`),
-  NO_CHILD_MENU,
-  "🧀 Fromage",
-  "⚠️ Allergie",
-].join(" · ");
+  ...[...STARTERS, ...ADULT_MAINS].map((k) => [PICTO[k], dishes[k].name]),
+  ...CHILD_MAINS.map((k) => [PICTO[k], `${dishes[k].name} (enfant)`]),
+  ["✕", "Sans entrée / pas de menu enfant"],
+  ["🧀", "Fromage"],
+  ["⚠️", "Allergie"],
+];
+
+/** Emoji in a fixed-width box: the dish names line up from one row to the next. */
+function Item({ icon, children }) {
+  return (
+    <span className="resto-item">
+      <span className="resto-emoji" aria-hidden="true">
+        {icon}
+      </span>
+      <span>{children}</span>
+    </span>
+  );
+}
+
+const Dish = ({ code, none }) => (code ? <Item icon={PICTO[code]}>{SHORT[code]}</Item> : <Item icon="✕">{none}</Item>);
+
+/** Entrée, plat, fromage cells of one guest. */
+function Courses({ g }) {
+  const adult = g.kind === "adult";
+  return (
+    <>
+      <td>{adult ? <Dish code={g.starter} none="Sans entrée" /> : "·"}</td>
+      <td>
+        <Dish code={g.main} none="Pas de menu" />
+      </td>
+      <td>{adult ? <Item icon={g.cheese ? "🧀" : ""}>{g.cheese ? "Oui" : "Non"}</Item> : "·"}</td>
+    </>
+  );
+}
 
 function RestaurantDashboard({ demo, onSignOut }) {
   const [households, setHouseholds] = useState([]);
@@ -38,7 +68,7 @@ function RestaurantDashboard({ demo, onSignOut }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [drafts, setDrafts] = useState({}); // guest key → allergy being typed
+  const [drafts, setDrafts] = useState({}); // "guest key|field" → text being typed
 
   const load = useCallback(() => {
     return Promise.all([listHouseholds(), listResponses()])
@@ -76,35 +106,48 @@ function RestaurantDashboard({ demo, onSignOut }) {
       );
   }, [households, rsvps]);
 
-  const pending = households.filter((h) => !h.confirmed_at);
   // What is typed counts at once (screen and print), even before it is saved.
-  const allergyOf = (g) => (g.key in drafts ? drafts[g.key] : g.allergy || "").trim();
+  const draftOf = (g, field) => drafts[`${g.key}|${field}`];
+  const valueOf = (g, field) => (draftOf(g, field) ?? g[field] ?? "").trim();
+  const allergyOf = (g) => valueOf(g, "allergy");
+  const nameOf = (g) => valueOf(g, "person_name") || g.person_name;
+
+  const pending = households.filter((h) => !h.confirmed_at);
+  const pendingPeople = pending.reduce((n, h) => n + h.adults + h.children, 0);
   const allergic = guests.filter(allergyOf);
   // Wrote something in the RSVP, but no allergy reported on anyone of the
   // household yet: a real allergy may be waiting (or it was a joke).
   const toCheck = guests.filter((g) => g.rsvpDiet && !guests.some((o) => o.householdId === g.householdId && allergyOf(o)));
+  // The PDF shows first names only: two guests with the same one must be told apart.
+  const byName = new Map();
+  for (const g of guests) {
+    const k = nameOf(g).toLowerCase();
+    byName.set(k, [...(byName.get(k) || []), g]);
+  }
+  const duplicates = [...byName.values()].filter((list) => list.length > 1);
+  // A space may hide a family name typed by the guest (« Paul Martin »).
+  const multiWord = guests.filter((g) => /\s/.test(nameOf(g)));
 
   const print = () => {
-    if (
-      toCheck.length &&
-      !window.confirm(
-        `${toCheck.length} foyer(s) ont écrit un régime ou une allergie dans le RSVP, sans rien de reporté sur la liste. Imprimer quand même ?`,
-      )
-    ) {
-      return;
-    }
+    const warnings = [
+      toCheck.length && `${toCheck.length} foyer(s) ont écrit un régime ou une allergie dans le RSVP, sans rien de reporté sur la liste.`,
+      duplicates.length && `${duplicates.length} prénom(s) en double, impossibles à distinguer sur le PDF.`,
+    ].filter(Boolean);
+    if (warnings.length && !window.confirm(`${warnings.join("\n")}\nImprimer quand même ?`)) return;
     window.print();
   };
 
-  const saveAllergy = async (g) => {
-    if (!(g.key in drafts)) return;
-    const value = drafts[g.key].trim();
-    if (value !== (g.allergy || "")) {
+  const save = async (g, field) => {
+    const id = `${g.key}|${field}`;
+    if (!(id in drafts)) return;
+    const value = drafts[id].trim();
+    if (value !== (g[field] || "")) {
       setError("");
       try {
-        await updateAllergy(g, value);
+        await updateChoice(g, { [field]: value });
         await load();
-        setNotice(value ? `Allergie de ${g.person_name} enregistrée.` : `Allergie de ${g.person_name} effacée.`);
+        if (field === "person_name") setNotice(`Prénom corrigé : ${g.person_name} → ${value}.`);
+        else setNotice(value ? `Allergie de ${g.person_name} enregistrée.` : `Allergie de ${g.person_name} effacée.`);
       } catch (e) {
         setError("Enregistrement impossible. " + (e?.message || ""));
         return; // keep what was typed
@@ -112,10 +155,24 @@ function RestaurantDashboard({ demo, onSignOut }) {
     }
     setDrafts((d) => {
       const next = { ...d };
-      delete next[g.key];
+      delete next[id];
       return next;
     });
   };
+
+  const field = (g, name, label, maxLength, placeholder) => (
+    <input
+      className={`resto-input resto-input--${name} resto-no-print`}
+      type="text"
+      maxLength={maxLength}
+      value={draftOf(g, name) ?? g[name] ?? ""}
+      placeholder={placeholder}
+      aria-label={`${label} de ${g.person_name}`}
+      onChange={(e) => setDrafts((d) => ({ ...d, [`${g.key}|${name}`]: e.target.value }))}
+      onBlur={() => save(g, name)}
+      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+    />
+  );
 
   const printedOn = new Date().toLocaleString("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
@@ -147,9 +204,9 @@ function RestaurantDashboard({ demo, onSignOut }) {
       {error && <p className="rsvp__error resto-no-print">{error}</p>}
       {notice && <p className="admin__notice resto-no-print">{notice}</p>}
       <p className="admin-panel__hint resto-no-print">
-        Corrigez l'allergie de chaque convive dans la colonne « Allergie » (enregistrée dès que vous quittez la case) ; la colonne
-        RSVP rappelle ce que le foyer a écrit. « Imprimer / PDF » sort la fiche allergies (cuisine et service), puis les totaux et
-        la liste complète.
+        Corrigez le prénom et l'allergie de chaque convive directement dans la liste (enregistré dès que vous quittez la case) ; la
+        colonne RSVP rappelle ce que le foyer a écrit. « Imprimer / PDF » sort la fiche allergies (une page), puis les totaux et la
+        liste complète, avec les prénoms seulement.
       </p>
 
       {toCheck.length > 0 && (
@@ -169,24 +226,80 @@ function RestaurantDashboard({ demo, onSignOut }) {
         </div>
       )}
 
+      {duplicates.length > 0 && (
+        <div className="admin-panel resto-no-print">
+          <h3 className="admin-panel__title">Prénoms en double ({duplicates.length})</h3>
+          <p className="admin-panel__hint">
+            Le PDF n'affiche que les prénoms : pour que la cuisine et le service ne les confondent pas, ajoutez une initiale (par
+            exemple « Marie D. ») dans la colonne « Prénom ».
+          </p>
+          <ul className="resto-check">
+            {duplicates.map((list) => (
+              <li key={list[0].key}>
+                <strong>{nameOf(list[0])}</strong> : {list.map((g) => g.household).join(", ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {multiWord.length > 0 && (
+        <div className="admin-panel resto-no-print">
+          <h3 className="admin-panel__title">Prénoms en plusieurs mots ({multiWord.length})</h3>
+          <p className="admin-panel__hint">
+            S'il y a un nom de famille, retirez-le dans la colonne « Prénom ». Un prénom composé (« Marie Claude ») peut rester.
+          </p>
+          <ul className="resto-check">
+            {multiWord.map((g) => (
+              <li key={g.key}>
+                <strong>{nameOf(g)}</strong> : {g.household}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <p className="resto-print-only resto-print-head">
         Mariage {wedding.couple} · samedi 10 octobre 2026 · liste arrêtée le {printedOn}
       </p>
 
-      <section className="resto-sheet">
+      <section className={"resto-sheet" + (allergic.length > 22 ? " is-dense" : "")}>
         <h2 className="resto-title">⚠️ Fiche allergies · cuisine et service</h2>
-        <p className="resto-legend">{LEGEND}</p>
+        <ul className="resto-legend-grid">
+          {LEGEND.map(([icon, label]) => (
+            <li key={label}>
+              <Item icon={icon}>{label}</Item>
+            </li>
+          ))}
+        </ul>
         {allergic.length ? (
-          <div className="resto-cards">
-            {allergic.map((g) => (
-              <article key={g.key} className="resto-card">
-                <p className="resto-card__name">
-                  ⚠️ {g.person_name} <span>({g.household}{g.kind === "child" ? ", enfant" : ""})</span>
-                </p>
-                <p className="resto-card__allergy">{allergyOf(g)}</p>
-                <p className="resto-card__menu">{menuLine(g)}</p>
-              </article>
-            ))}
+          <div className="admin-table-wrap">
+            <table className="admin-table resto-table resto-allergies">
+              <thead>
+                <tr>
+                  <th>Prénom</th>
+                  <th>Allergie</th>
+                  <th>Entrée</th>
+                  <th>Plat</th>
+                  <th>Fromage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allergic.map((g) => (
+                  <tr key={g.key}>
+                    <td>
+                      <Item icon="⚠️">
+                        <strong>{nameOf(g)}</strong>
+                        {g.kind === "child" ? " (enfant)" : ""}
+                      </Item>
+                      <span className="resto-household resto-no-print">{g.household}</span>
+                    </td>
+                    <td className="resto-allergy">{allergyOf(g)}</td>
+                    <Courses g={g} />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
           <p className="resto-legend">Aucune allergie renseignée pour l'instant.</p>
@@ -202,18 +315,23 @@ function RestaurantDashboard({ demo, onSignOut }) {
       <section>
         <h2 className="resto-title">Tous les convives ({guests.length})</h2>
         {pending.length > 0 && (
-          <p className="rsvp__error">
-            Pas encore de menu : {pending.map((h) => `${h.name} (${h.adults + h.children})`).join(", ")}.
-          </p>
+          <>
+            <p className="rsvp__error resto-no-print">
+              Pas encore de menu : {pending.map((h) => `${h.name} (${h.adults + h.children})`).join(", ")}.
+            </p>
+            <p className="resto-print-only resto-print-count">
+              {pendingPeople} personne(s) n'ont pas encore choisi leur menu.
+            </p>
+          </>
         )}
         {loading && !guests.length ? (
           <p className="admin__empty">Chargement…</p>
         ) : (
           <div className="admin-table-wrap">
-            <table className="admin-table resto-table">
+            <table className="admin-table resto-table resto-list">
               <thead>
                 <tr>
-                  <th>Foyer</th>
+                  <th className="resto-no-print">Foyer</th>
                   <th>Prénom</th>
                   <th>Entrée</th>
                   <th>Plat</th>
@@ -225,27 +343,16 @@ function RestaurantDashboard({ demo, onSignOut }) {
               <tbody>
                 {guests.map((g) => (
                   <tr key={g.key} className={allergyOf(g) ? "resto-row--allergy" : ""}>
-                    <td>{g.first ? g.household : ""}</td>
+                    <td className="resto-no-print">{g.first ? g.household : ""}</td>
                     <td>
-                      <strong>{g.person_name}</strong>
+                      {field(g, "person_name", "Prénom", 60, "Prénom")}
+                      <strong className="resto-print-only">{nameOf(g)}</strong>
                       {g.kind === "child" ? " (enfant)" : ""}
                     </td>
-                    <td>{g.kind === "adult" ? starterOf(g) : "·"}</td>
-                    <td>{mainOf(g)}</td>
-                    <td>{g.kind === "adult" ? cheeseOf(g) : "·"}</td>
+                    <Courses g={g} />
                     <td>
-                      <input
-                        className="resto-input resto-no-print"
-                        type="text"
-                        maxLength={120}
-                        value={drafts[g.key] ?? g.allergy ?? ""}
-                        placeholder="Aucune"
-                        aria-label={`Allergie de ${g.person_name}`}
-                        onChange={(e) => setDrafts((d) => ({ ...d, [g.key]: e.target.value }))}
-                        onBlur={() => saveAllergy(g)}
-                        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                      />
-                      <span className="resto-print-only">{allergyOf(g) ? `⚠️ ${allergyOf(g)}` : ""}</span>
+                      {field(g, "allergy", "Allergie", 120, "Aucune")}
+                      <span className="resto-print-only">{allergyOf(g) && <Item icon="⚠️">{allergyOf(g)}</Item>}</span>
                     </td>
                     <td className="resto-no-print resto-rsvp">{g.rsvpDiet && `« ${g.rsvpDiet} »`}</td>
                   </tr>
